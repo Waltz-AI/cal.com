@@ -9,7 +9,7 @@ type GetClientOptions = {
 export const getClientHandler = async ({ input }: GetClientOptions) => {
   const { clientId } = input;
 
-  const client = await prisma.oAuthClient.findUnique({
+  const client = await prisma.oAuthClient.findFirst({
     where: {
       clientId,
     },

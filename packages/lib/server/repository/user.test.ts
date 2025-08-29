@@ -9,11 +9,8 @@ import { UserRepository } from "./user";
 
 vi.mock("@calcom/lib/server/i18n", () => {
   return {
-    getTranslation: async (locale: string, namespace: string) => {
-      const t = (key: string) => key;
-      t.locale = locale;
-      t.namespace = namespace;
-      return t;
+    getTranslation: (key: string) => {
+      return () => key;
     },
   };
 });
@@ -25,7 +22,7 @@ describe("UserRepository", () => {
 
   describe("create", () => {
     test("Should create a user without a password", async () => {
-      const user = await new UserRepository(prismock).create({
+      const user = await UserRepository.create({
         username: "test",
         email: "test@example.com",
         organizationId: null,
@@ -53,7 +50,7 @@ describe("UserRepository", () => {
     });
 
     test("If locked param is passed, user should be locked", async () => {
-      const user = await new UserRepository(prismock).create({
+      const user = await UserRepository.create({
         username: "test",
         email: "test@example.com",
         organizationId: null,
@@ -81,7 +78,7 @@ describe("UserRepository", () => {
       const organizationId = 123;
       const username = "test";
 
-      const user = await new UserRepository(prismock).create({
+      const user = await UserRepository.create({
         username,
         email: "test@example.com",
         organizationId,

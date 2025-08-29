@@ -59,6 +59,7 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
   const slugCollisions = await prisma.team.findFirst({
     where: {
       slug: slug,
+      // If this is under an org, check that the team doesn't already exist
       parentId: isOrgChildTeam ? user.profile?.organizationId : null,
     },
   });
@@ -106,12 +107,7 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     },
   });
   // Upload logo, create doesn't allow logo removal
-  if (
-    input.logo &&
-    (input.logo.startsWith("data:image/png;base64,") ||
-      input.logo.startsWith("data:image/jpeg;base64,") ||
-      input.logo.startsWith("data:image/jpg;base64,"))
-  ) {
+  if (input.logo && input.logo.startsWith("data:image/png;base64,")) {
     const logoUrl = await uploadLogo({
       logo: await resizeBase64Image(input.logo),
       teamId: createdTeam.id,

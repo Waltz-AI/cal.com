@@ -16,6 +16,14 @@
         "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
         "webpack://?:*/*": "${workspaceFolder}/*"
       }
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to NestJS (Debug)",
+      "port": 9229,
+      "restart": true,
+      "sourceMaps": true
     }
   ]
 }

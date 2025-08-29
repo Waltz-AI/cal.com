@@ -1,5 +1,4 @@
 import { UserRepository } from "@calcom/lib/server/repository/user";
-import prisma from "@calcom/prisma";
 
 import type { TrpcSessionUser } from "../../../types";
 import type { TWhitelistUserWorkflows } from "./whitelistUserWorkflows.schema";
@@ -14,7 +13,7 @@ type GetOptions = {
 export const whitelistUserWorkflows = async ({ input }: GetOptions) => {
   const { userId, whitelistWorkflows } = input;
 
-  const user = await new UserRepository(prisma).updateWhitelistWorkflows({
+  const user = await UserRepository.updateWhitelistWorkflows({
     id: userId,
     whitelistWorkflows,
   });

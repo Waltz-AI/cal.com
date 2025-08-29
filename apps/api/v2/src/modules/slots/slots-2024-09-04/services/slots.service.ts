@@ -1,13 +1,8 @@
 import { EventTypesRepository_2024_06_14 } from "@/ee/event-types/event-types_2024_06_14/event-types.repository";
-import { AvailableSlotsService } from "@/lib/services/available-slots.service";
 import { MembershipsRepository } from "@/modules/memberships/memberships.repository";
 import { MembershipsService } from "@/modules/memberships/services/memberships.service";
 import { TimeSlots } from "@/modules/slots/slots-2024-04-15/services/slots-output.service";
-import {
-  SlotsInputService_2024_09_04,
-  InternalGetSlotsQuery,
-  InternalGetSlotsQueryWithRouting,
-} from "@/modules/slots/slots-2024-09-04/services/slots-input.service";
+import { SlotsInputService_2024_09_04 } from "@/modules/slots/slots-2024-09-04/services/slots-input.service";
 import { SlotsOutputService_2024_09_04 } from "@/modules/slots/slots-2024-09-04/services/slots-output.service";
 import { SlotsRepository_2024_09_04 } from "@/modules/slots/slots-2024-09-04/slots.repository";
 import { TeamsRepository } from "@/modules/teams/teams/teams.repository";
@@ -22,12 +17,8 @@ import {
 import { DateTime } from "luxon";
 import { z } from "zod";
 
-import { SlotFormat } from "@calcom/platform-enums";
-import {
-  GetSlotsInput_2024_09_04,
-  GetSlotsInputWithRouting_2024_09_04,
-  ReserveSlotInput_2024_09_04,
-} from "@calcom/platform-types";
+import { getAvailableSlots } from "@calcom/platform-libraries/slots";
+import { GetSlotsInput_2024_09_04, ReserveSlotInput_2024_09_04 } from "@calcom/platform-types";
 import { EventType } from "@calcom/prisma/client";
 
 const eventTypeMetadataSchema = z
@@ -38,7 +29,6 @@ const eventTypeMetadataSchema = z
 
 const DEFAULT_RESERVATION_DURATION = 5;
 
-type InternalSlotsQuery = InternalGetSlotsQuery | InternalGetSlotsQueryWithRouting;
 @Injectable()
 export class SlotsService_2024_09_04 {
   constructor(
@@ -48,22 +38,23 @@ export class SlotsService_2024_09_04 {
     private readonly slotsInputService: SlotsInputService_2024_09_04,
     private readonly membershipsService: MembershipsService,
     private readonly membershipsRepository: MembershipsRepository,
-    private readonly teamsRepository: TeamsRepository,
-    private readonly availableSlotsService: AvailableSlotsService
+    private readonly teamsRepository: TeamsRepository
   ) {}
 
-  private async fetchAndFormatSlots(queryTransformed: InternalSlotsQuery, format?: SlotFormat) {
+  async getAvailableSlots(query: GetSlotsInput_2024_09_04) {
     try {
-      const availableSlots: TimeSlots = await this.availableSlotsService.getAvailableSlots({
-        input: queryTransformed,
+      const queryTransformed = await this.slotsInputService.transformGetSlotsQuery(query);
+      const availableSlots: TimeSlots = await getAvailableSlots({
+        input: {
+          ...queryTransformed,
+        },
         ctx: {},
       });
-
       const formatted = await this.slotsOutputService.getAvailableSlots(
         availableSlots,
         queryTransformed.eventTypeId,
         queryTransformed.duration,
-        format,
+        query.format,
         queryTransformed.timeZone
       );
 
@@ -78,16 +69,6 @@ export class SlotsService_2024_09_04 {
       }
       throw error;
     }
-  }
-
-  async getAvailableSlots(query: GetSlotsInput_2024_09_04) {
-    const queryTransformed = await this.slotsInputService.transformGetSlotsQuery(query);
-    return this.fetchAndFormatSlots(queryTransformed, query.format);
-  }
-
-  async getAvailableSlotsWithRouting(query: GetSlotsInputWithRouting_2024_09_04) {
-    const queryTransformed = await this.slotsInputService.transformRoutingGetSlotsQuery(query);
-    return this.fetchAndFormatSlots(queryTransformed, query.format);
   }
 
   async reserveSlot(input: ReserveSlotInput_2024_09_04, authUserId?: number) {
@@ -128,10 +109,9 @@ export class SlotsService_2024_09_04 {
       throw new BadRequestException("Invalid end date");
     }
 
-    const booking = await this.slotsRepository.findActiveOverlappingBooking(
+    const booking = await this.slotsRepository.getBookingWithAttendeesByEventTypeIdAndStart(
       input.eventTypeId,
-      startDate.toJSDate(),
-      endDate.toJSDate()
+      startDate.toJSDate()
     );
 
     if (eventType.seatsPerTimeSlot) {
@@ -278,10 +258,9 @@ export class SlotsService_2024_09_04 {
       throw new BadRequestException("Invalid end date");
     }
 
-    const booking = await this.slotsRepository.findActiveOverlappingBooking(
+    const booking = await this.slotsRepository.getBookingWithAttendeesByEventTypeIdAndStart(
       input.eventTypeId,
-      startDate.toJSDate(),
-      endDate.toJSDate()
+      startDate.toJSDate()
     );
 
     if (eventType.seatsPerTimeSlot) {

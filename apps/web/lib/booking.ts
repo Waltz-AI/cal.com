@@ -70,11 +70,6 @@ export const getEventTypesFromDB = async (id: number) => {
           slug: true,
           name: true,
           hideBranding: true,
-          parent: {
-            select: {
-              hideBranding: true,
-            },
-          },
         },
       },
       workflows: {
@@ -157,7 +152,7 @@ export const handleSeatsEventTypeOnBooking = async (
   } | null;
   let seatAttendee: seatAttendee = null;
   if (seatReferenceUid) {
-    seatAttendee = await prisma.bookingSeat.findUnique({
+    seatAttendee = await prisma.bookingSeat.findFirst({
       where: {
         referenceUid: seatReferenceUid,
       },

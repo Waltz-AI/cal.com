@@ -211,12 +211,6 @@ const WebhookForm = (props: {
                   grow
                   options={translatedTriggerOptions}
                   isMulti
-                  styles={{
-                    indicatorsContainer: (base) => ({
-                      ...base,
-                      alignItems: "flex-start",
-                    }),
-                  }}
                   value={selectValue}
                   onChange={(event) => {
                     onChange(event.map((selection) => selection.value));

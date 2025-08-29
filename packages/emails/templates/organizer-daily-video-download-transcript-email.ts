@@ -38,8 +38,7 @@ export default class OrganizerDailyVideoDownloadTranscriptEmail extends BaseEmai
       from: `${EMAIL_FROM_NAME} <${this.getMailerOptions().from}>`,
       ...getReplyToHeader(
         this.calEvent,
-        this.calEvent.attendees.map(({ email }) => email),
-        true
+        this.calEvent.attendees.map(({ email }) => email)
       ),
       subject: `${this.t("download_transcript_email_subject", {
         title: this.calEvent.title,

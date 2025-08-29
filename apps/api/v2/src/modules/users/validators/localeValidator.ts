@@ -26,7 +26,6 @@ export class LocaleValidator implements ValidatorConstraintInterface {
       "sr",
       "sv",
       "vi",
-      "bn",
     ];
 
     if (localeValues.includes(locale)) return true;

@@ -50,7 +50,6 @@ export default function RecurringEventController({
     formMethods.getValues("recurringEvent")
   );
   const isSeatsOffered = !!formMethods.getValues("seatsPerTimeSlot");
-  const hasBookingLimitPerBooker = !!formMethods.getValues("maxActiveBookingsPerBooker");
   /* Just yearly-0, monthly-1 and weekly-2 */
   const recurringEventFreqOptions = Object.entries(Frequency)
     .filter(([key, value]) => isNaN(Number(key)) && Number(value) < 3)
@@ -94,14 +93,8 @@ export default function RecurringEventController({
               description={t("recurring_event_description")}
               checked={!!recurringEventState}
               data-testid="recurring-event-check"
-              disabled={(!recurringEventState && isSeatsOffered) || hasBookingLimitPerBooker}
-              tooltip={
-                isSeatsOffered
-                  ? t("seats_doesnt_support_recurring")
-                  : hasBookingLimitPerBooker
-                  ? t("booking_limit_per_booker_doesnt_support_recurring")
-                  : undefined
-              }
+              disabled={!recurringEventState && isSeatsOffered}
+              tooltip={isSeatsOffered ? t("seats_doesnt_support_recurring") : undefined}
               onCheckedChange={(e) => {
                 if (!e) {
                   formMethods.setValue("recurringEvent", null, { shouldDirty: true });

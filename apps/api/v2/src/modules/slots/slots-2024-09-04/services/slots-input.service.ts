@@ -10,34 +10,14 @@ import { DateTime } from "luxon";
 
 import { dynamicEvent } from "@calcom/platform-libraries";
 import {
+  ById_2024_09_04,
   ByUsernameAndEventTypeSlug_2024_09_04,
   ByTeamSlugAndEventTypeSlug_2024_09_04,
   GetSlotsInput_2024_09_04,
-  GetSlotsInputWithRouting_2024_09_04,
   ById_2024_09_04_type,
   ByUsernameAndEventTypeSlug_2024_09_04_type,
   ByTeamSlugAndEventTypeSlug_2024_09_04_type,
 } from "@calcom/platform-types";
-
-export type InternalGetSlotsQuery = {
-  isTeamEvent: boolean;
-  startTime: string;
-  endTime: string;
-  duration?: number;
-  eventTypeId: number;
-  eventTypeSlug: string;
-  usernameList: string[];
-  timeZone: string | undefined;
-  orgSlug: string | null | undefined;
-  rescheduleUid: string | null;
-};
-
-export type InternalGetSlotsQueryWithRouting = InternalGetSlotsQuery & {
-  routedTeamMemberIds: number[] | null;
-  skipContactOwner: boolean;
-  teamMemberEmail: string | null;
-  routingFormResponseId: number | undefined;
-};
 
 @Injectable()
 export class SlotsInputService_2024_09_04 {
@@ -51,7 +31,7 @@ export class SlotsInputService_2024_09_04 {
     private readonly teamsEventTypesRepository: TeamsEventTypesRepository
   ) {}
 
-  async transformGetSlotsQuery(query: GetSlotsInput_2024_09_04): Promise<InternalGetSlotsQuery> {
+  async transformGetSlotsQuery(query: GetSlotsInput_2024_09_04) {
     const eventType = await this.getEventType(query);
     if (!eventType) {
       throw new NotFoundException(`Event Type not found`);
@@ -66,7 +46,6 @@ export class SlotsInputService_2024_09_04 {
     const usernameList = "usernames" in query ? query.usernames : [];
     const timeZone = query.timeZone;
     const orgSlug = "organizationSlug" in query ? query.organizationSlug : null;
-    const rescheduleUid = query.bookingUidToReschedule || null;
 
     return {
       isTeamEvent,
@@ -78,24 +57,6 @@ export class SlotsInputService_2024_09_04 {
       usernameList,
       timeZone,
       orgSlug,
-      rescheduleUid,
-    };
-  }
-
-  async transformRoutingGetSlotsQuery(
-    query: GetSlotsInputWithRouting_2024_09_04
-  ): Promise<InternalGetSlotsQueryWithRouting> {
-    const { routedTeamMemberIds, skipContactOwner, teamMemberEmail, routingFormResponseId, ...baseQuery } =
-      query;
-
-    const baseTransformation = await this.transformGetSlotsQuery(baseQuery);
-
-    return {
-      ...baseTransformation,
-      routedTeamMemberIds: routedTeamMemberIds || null,
-      skipContactOwner: skipContactOwner || false,
-      teamMemberEmail: teamMemberEmail || null,
-      routingFormResponseId: routingFormResponseId ?? undefined,
     };
   }
 

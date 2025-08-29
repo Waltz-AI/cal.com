@@ -255,11 +255,6 @@ export type FilterSegmentOutput = {
   team: { id: number; name: string } | null;
 };
 
-export type FilterSegmentsListResponse = {
-  segments: FilterSegmentOutput[];
-  preferredSegmentId: number | null;
-};
-
 export type SegmentStorage = {
   [tableIdentifier: string]: {
     segmentId: number;
@@ -275,7 +270,7 @@ export const ZSegmentStorage = z.record(
 
 export type UseSegments = (props: UseSegmentsProps) => UseSegmentsReturn;
 
-export type UseSegmentsProps = {
+type UseSegmentsProps = {
   tableIdentifier: string;
   activeFilters: ActiveFilters;
   sorting: SortingState;
@@ -293,11 +288,9 @@ export type UseSegmentsProps = {
   setPageSize: (pageSize: number) => void;
   setPageIndex: (pageIndex: number) => void;
   setSearchTerm: (searchTerm: string | null) => void;
-  segments?: FilterSegmentOutput[];
-  preferredSegmentId?: number | null;
 };
 
-export type UseSegmentsReturn = {
+type UseSegmentsReturn = {
   segments: FilterSegmentOutput[];
   selectedSegment: FilterSegmentOutput | undefined;
   canSaveSegment: boolean;

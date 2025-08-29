@@ -78,11 +78,9 @@ const AddNewTeamsFormChild = ({ teams }: { teams: { id: number; name: string; sl
       teams: teamsToCreateFromStore.length ? teamsToCreateFromStore : [{ name: "" }],
       moveTeams: teams.map((team) => {
         const teamToMigrateInStore = teamsToMigrateFromStore.find((t) => t.id === team.id);
-        const slugConflictsWithOrg = team.slug === orgSlug;
         return {
           id: team.id,
-          // The team with conflicting slug must be moved
-          shouldMove: slugConflictsWithOrg || !!teamToMigrateInStore,
+          shouldMove: !!teamToMigrateInStore,
           newSlug: teamToMigrateInStore?.slug || getSuggestedSlug({ teamSlug: team.slug, orgSlug }),
           name: team.name,
         };
@@ -162,9 +160,6 @@ const AddNewTeamsFormChild = ({ teams }: { teams: { id: number; name: string; sl
             </label>
             <ul className="mb-8 space-y-4">
               {moveTeams.map((team, index) => {
-                const currentTeam = teams.find((t) => t.id === team.id);
-                // If the team slug conflicts with the org slug, this team must be moved
-                const slugConflictsWithOrg = currentTeam?.slug === orgSlug;
                 return (
                   <li key={team.id}>
                     <Controller
@@ -172,11 +167,9 @@ const AddNewTeamsFormChild = ({ teams }: { teams: { id: number; name: string; sl
                       render={({ field: { value, onChange } }) => (
                         <CheckboxField
                           defaultValue={value}
-                          checked={value || slugConflictsWithOrg}
+                          checked={value}
                           onChange={onChange}
-                          description={currentTeam?.name ?? ""}
-                          // Must not allow toggling off if the slug conflicts with the org slug
-                          disabled={slugConflictsWithOrg}
+                          description={teams.find((t) => t.id === team.id)?.name ?? ""}
                         />
                       )}
                     />

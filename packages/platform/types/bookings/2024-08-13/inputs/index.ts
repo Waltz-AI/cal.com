@@ -9,3 +9,5 @@ export * from "./reschedule-booking-input.pipe";
 export * from "./cancel-booking-input.pipe";
 export * from "./decline-booking.input";
 export * from "./validators/validate-metadata";
+export * from "./edit-location.input";
+export * from "./request-reschedule.input";

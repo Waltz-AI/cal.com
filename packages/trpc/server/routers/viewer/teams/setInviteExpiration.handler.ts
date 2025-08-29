@@ -16,7 +16,7 @@ type SetInviteExpirationOptions = {
 export const setInviteExpirationHandler = async ({ ctx, input }: SetInviteExpirationOptions) => {
   const { token, expiresInDays } = input;
 
-  const verificationToken = await prisma.verificationToken.findUnique({
+  const verificationToken = await prisma.verificationToken.findFirst({
     where: {
       token: token,
     },

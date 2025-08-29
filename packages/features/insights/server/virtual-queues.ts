@@ -73,7 +73,6 @@ class VirtualQueuesInsights {
             AND m.role = 'ADMIN'
           )
         )
-        AND (t."rrTimestampBasis" IS NULL OR t."rrTimestampBasis" = 'CREATED_AT')
     `;
 
     // Convert the raw forms to serializable format

@@ -1,5 +1,4 @@
 import { InputEventTypesService_2024_06_14 } from "@/ee/event-types/event-types_2024_06_14/services/input-event-types.service";
-import { transformTeamLocationsApiToInternal } from "@/ee/event-types/event-types_2024_06_14/transformers/api-to-internal/locations";
 import { ConferencingRepository } from "@/modules/conferencing/repositories/conferencing.repository";
 import { OrganizationsConferencingService } from "@/modules/organizations/conferencing/services/organizations-conferencing.service";
 import { TeamsEventTypesRepository } from "@/modules/teams/event-types/teams-event-types.repository";
@@ -7,6 +6,7 @@ import { TeamsRepository } from "@/modules/teams/teams/teams.repository";
 import { UsersRepository } from "@/modules/users/users.repository";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 
+import { transformTeamLocationsApiToInternal } from "@calcom/platform-libraries/event-types";
 import {
   CreateTeamEventTypeInput_2024_06_14,
   UpdateTeamEventTypeInput_2024_06_14,
@@ -121,7 +121,7 @@ export class InputOrganizationsEventTypesService {
       },
     ];
 
-    const children = await this.getChildEventTypesForManagedEventTypeCreate(inputEventType, teamId);
+    const children = await this.getChildEventTypesForManagedEventType(null, inputEventType, teamId);
 
     const metadata =
       rest.schedulingType === "MANAGED"
@@ -159,11 +159,7 @@ export class InputOrganizationsEventTypesService {
       throw new BadRequestException("Event type to update not found");
     }
 
-    const children =
-      dbEventType.schedulingType === "MANAGED"
-        ? await this.getChildEventTypesForManagedEventTypeUpdate(eventTypeId, inputEventType, teamId)
-        : undefined;
-
+    const children = await this.getChildEventTypesForManagedEventType(eventTypeId, inputEventType, teamId);
     const teamEventType = {
       ...eventType,
       // note(Lauris): we don't populate hosts for managed event-types because they are handled by the children
@@ -180,17 +176,20 @@ export class InputOrganizationsEventTypesService {
     return teamEventType;
   }
 
-  async getChildEventTypesForManagedEventTypeUpdate(
-    eventTypeId: number,
+  async getChildEventTypesForManagedEventType(
+    eventTypeId: number | null,
     inputEventType: UpdateTeamEventTypeInput_2024_06_14,
     teamId: number
   ) {
-    const eventType = await this.teamsEventTypesRepository.getEventTypeByIdWithChildren(eventTypeId);
-    if (!eventType || eventType.schedulingType !== "MANAGED") {
-      return undefined;
+    let eventType = null;
+    if (eventTypeId) {
+      eventType = await this.teamsEventTypesRepository.getEventTypeByIdWithChildren(eventTypeId);
+      if (!eventType || eventType.schedulingType !== "MANAGED") {
+        return undefined;
+      }
     }
 
-    const ownersIds = await this.getOwnersIdsForManagedEventTypeUpdate(teamId, inputEventType, eventType);
+    const ownersIds = await this.getOwnersIdsForManagedEventType(teamId, inputEventType, eventType);
     const owners = await this.getOwnersForManagedEventType(ownersIds);
 
     return owners.map((owner) => {
@@ -201,58 +200,22 @@ export class InputOrganizationsEventTypesService {
     });
   }
 
-  async getOwnersIdsForManagedEventTypeUpdate(
+  async getOwnersIdsForManagedEventType(
     teamId: number,
     inputEventType: UpdateTeamEventTypeInput_2024_06_14,
-    eventType: { children: { userId: number | null }[] }
+    eventType: { children: { userId: number | null }[] } | null
   ) {
     if (inputEventType.assignAllTeamMembers) {
       return await this.getTeamUsersIds(teamId);
     }
 
+    // note(Lauris): when API user updates managed event type users
     if (inputEventType.hosts) {
       return inputEventType.hosts.map((host) => host.userId);
     }
 
     // note(Lauris): when API user DOES NOT update managed event type users, but we still need existing managed event type users to know which event-types to update
-    // e.g if managed event type title is changed then all children managed event types should be updated as well.
-    const childrenOwnersIds: number[] = [];
-    for (const child of eventType.children) {
-      if (child.userId) {
-        childrenOwnersIds.push(child.userId);
-      }
-    }
-    return childrenOwnersIds;
-  }
-
-  async getChildEventTypesForManagedEventTypeCreate(
-    inputEventType: UpdateTeamEventTypeInput_2024_06_14,
-    teamId: number
-  ) {
-    const ownersIds = await this.getOwnersIdsForManagedEventTypeCreate(teamId, inputEventType);
-    const owners = await this.getOwnersForManagedEventType(ownersIds);
-
-    return owners.map((owner) => {
-      return {
-        hidden: false,
-        owner,
-      };
-    });
-  }
-
-  async getOwnersIdsForManagedEventTypeCreate(
-    teamId: number,
-    inputEventType: UpdateTeamEventTypeInput_2024_06_14
-  ) {
-    if (inputEventType.assignAllTeamMembers) {
-      return await this.getTeamUsersIds(teamId);
-    }
-
-    if (inputEventType.hosts) {
-      return inputEventType.hosts.map((host) => host.userId);
-    }
-
-    return [];
+    return eventType?.children.map((child) => child.userId).filter((id) => !!id) as number[];
   }
 
   async getTeamUsersIds(teamId: number) {
@@ -271,7 +234,7 @@ export class InputOrganizationsEventTypesService {
   }
 
   async getOwnersForManagedEventType(userIds: number[]) {
-    const users = userIds.length ? await this.usersRepository.findByIdsWithEventTypes(userIds) : [];
+    const users = await this.usersRepository.findByIdsWithEventTypes(userIds);
 
     return users.map((user) => {
       const nonManagedEventTypes = user.eventTypes.filter((eventType) => !eventType.parentId);

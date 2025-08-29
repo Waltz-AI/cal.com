@@ -100,13 +100,10 @@ const commons = {
   destinationCalendar: null,
   team: null,
   lockTimeZoneToggleOnBookingPage: false,
-  lockedTimeZone: null,
   requiresConfirmation: false,
   requiresConfirmationForFreeEmail: false,
   requiresBookerEmailVerification: false,
   bookingLimits: null,
-  maxActiveBookingsPerBooker: null,
-  maxActiveBookingPerBookerOfferReschedule: false,
   durationLimits: null,
   hidden: false,
   userId: 0,
@@ -133,18 +130,8 @@ const commons = {
   includeNoShowInRRCalculation: false,
   useEventLevelSelectedCalendars: false,
   rrResetInterval: null,
-  rrTimestampBasis: null,
   interfaceLanguage: null,
   customReplyToEmail: null,
-  restrictionScheduleId: null,
-  useBookerTimezone: false,
-  profileId: null,
-  requiresConfirmationWillBlockSlot: false,
-  canSendCalVideoTranscriptionEmails: false,
-  instantMeetingExpiryTimeOffsetInSeconds: 0,
-  instantMeetingScheduleId: null,
-  instantMeetingParameters: [],
-  eventTypeColor: null,
 };
 
 export const dynamicEvent = {
@@ -200,10 +187,8 @@ export const getUsernameList = (users: string | string[] | undefined): string[] 
   // Multiple users can come in case of a team round-robin booking and in that case dynamic link won't be a user.
   // So, even though this code handles even if individual user is dynamic link, that isn't a possibility right now.
   users = arrayCast(users);
-  const allUsers = users
-    .map((user) => user.replace(/( |%20|%2b)/gi, "+").split("+"))
-    .flat()
-    .filter(Boolean);
+
+  const allUsers = users.map((user) => user.replace(/( |%20|%2b)/gi, "+").split("+")).flat();
   return Array.prototype.concat(...allUsers.map((userSlug) => slugify(userSlug)));
 };
 

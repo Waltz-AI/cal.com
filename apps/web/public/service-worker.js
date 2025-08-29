@@ -25,7 +25,18 @@ self.addEventListener("push", async (event) => {
         });
 
         existingNotifications.forEach((notification) => {
-          notification.close();
+          const options = {
+            body: notification.body,
+            icon: notification.icon,
+            badge: notification.badge,
+            data: notification.data,
+            silent: notification.silent,
+            vibrate: notification.vibrate,
+            requireInteraction: notification.requireInteraction,
+            tag: notification.tag,
+          };
+
+          self.registration.showNotification(notification.title, options);
         });
 
         // Special handling for instant meetings
@@ -76,8 +87,6 @@ self.addEventListener("notificationclick", (event) => {
         });
       });
     };
-
-    event.waitUntil(stopSound());
   }
 
   if (!event.action) {
@@ -102,13 +111,4 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activated.');
-
-  event.waitUntil(
-    (async () => {
-      const notifications = await self.registration.getNotifications();
-      notifications.forEach(notification => notification.close());
-
-      return self.clients.claim();
-    })()
-  );
 });

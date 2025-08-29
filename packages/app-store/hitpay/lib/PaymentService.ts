@@ -41,7 +41,7 @@ export class PaymentService implements IAbstractPaymentService {
     bookerEmail: string
   ) {
     try {
-      const booking: PaidBooking | null = await prisma.booking.findUnique({
+      const booking: PaidBooking | null = await prisma.booking.findFirst({
         where: {
           id: bookingId,
         },
@@ -50,7 +50,6 @@ export class PaymentService implements IAbstractPaymentService {
           title: true,
           startTime: true,
           endTime: true,
-          eventTypeId: true,
           eventType: {
             select: {
               slug: true,
@@ -65,13 +64,11 @@ export class PaymentService implements IAbstractPaymentService {
         throw new Error("Booking or API key not found");
       }
 
-      const { startTime, endTime, eventTypeId } = booking;
+      const { startTime, endTime } = booking;
       const bookingsWithSameTimeSlot = await prisma.booking.findMany({
         where: {
-          eventTypeId,
           startTime,
           endTime,
-          OR: [{ status: "PENDING" }, { status: "AWAITING_HOST" }],
         },
         select: {
           uid: true,
@@ -172,24 +169,8 @@ export class PaymentService implements IAbstractPaymentService {
         throw new Error("Failed to store Payment data");
       }
       return paymentData;
-    } catch (error: any) {
+    } catch (error) {
       log.error("Payment could not be created", bookingId, safeStringify(error));
-      try {
-        await prisma.booking.update({
-          where: {
-            id: bookingId,
-          },
-          data: {
-            status: "CANCELLED",
-          },
-        });
-      } catch (error) {
-        throw new Error(ErrorCode.PaymentCreationFailure);
-      }
-
-      if (error.message === ErrorCode.BookingSeatsFull || error.message === ErrorCode.NoAvailableUsersFound) {
-        throw error;
-      }
       throw new Error(ErrorCode.PaymentCreationFailure);
     }
   }

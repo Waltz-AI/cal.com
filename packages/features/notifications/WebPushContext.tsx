@@ -27,10 +27,8 @@ export function WebPushProvider({ children }: ProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const { mutate: addSubscription } =
-    trpc.viewer.loggedInViewerRouter.addNotificationsSubscription.useMutation();
-  const { mutate: removeSubscription } =
-    trpc.viewer.loggedInViewerRouter.removeNotificationsSubscription.useMutation();
+  const { mutate: addSubscription } = trpc.viewer.addNotificationsSubscription.useMutation();
+  const { mutate: removeSubscription } = trpc.viewer.removeNotificationsSubscription.useMutation();
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;

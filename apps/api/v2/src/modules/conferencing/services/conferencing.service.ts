@@ -4,31 +4,26 @@ import { GoogleMeetService } from "@/modules/conferencing/services/google-meet.s
 import { Office365VideoService } from "@/modules/conferencing/services/office365-video.service";
 import { ZoomVideoService } from "@/modules/conferencing/services/zoom-video.service";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
-import { UserWithProfile } from "@/modules/users/users.repository";
-import { UsersRepository } from "@/modules/users/users.repository";
+import { UsersRepository, UserWithProfile } from "@/modules/users/users.repository";
 import {
   BadRequestException,
+  Injectable,
   InternalServerErrorException,
-  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import { Injectable } from "@nestjs/common";
 
 import {
-  CONFERENCING_APPS,
   CAL_VIDEO,
+  CONFERENCING_APPS,
   GOOGLE_MEET,
-  ZOOM,
   OFFICE_365_VIDEO,
+  ZOOM,
 } from "@calcom/platform-constants";
-import { userMetadata } from "@calcom/platform-libraries";
-import { getUsersCredentialsIncludeServiceAccountKey } from "@calcom/platform-libraries/app-store";
+import { getUsersCredentials, userMetadata } from "@calcom/platform-libraries";
 import { getApps, handleDeleteCredential } from "@calcom/platform-libraries/app-store";
 
 @Injectable()
 export class ConferencingService {
-  private logger = new Logger("ConferencingService");
-
   constructor(
     private readonly conferencingRepository: ConferencingRepository,
     private readonly usersRepository: UsersRepository,
@@ -74,6 +69,9 @@ export class ConferencingService {
           teamId
         );
 
+      case GOOGLE_MEET:
+        return await this.googleMeetService.connectGoogleMeetApp(decodedCallbackState, code, userId);
+
       default:
         throw new BadRequestException(
           "Invalid conferencing app, available apps are: ",
@@ -91,7 +89,7 @@ export class ConferencingService {
     if (!CONFERENCING_APPS.includes(appSlug)) {
       throw new BadRequestException("Invalid app, available apps are: ", CONFERENCING_APPS.join(", "));
     }
-    const credentials = await getUsersCredentialsIncludeServiceAccountKey(user);
+    const credentials = await getUsersCredentials(user);
 
     const foundApp = getApps(credentials, true).filter((app) => app.slug === appSlug)[0];
 
@@ -132,6 +130,9 @@ export class ConferencingService {
 
       case OFFICE_365_VIDEO:
         return await this.office365VideoService.generateOffice365AuthUrl(JSON.stringify(state));
+
+      case GOOGLE_MEET:
+        return await this.googleMeetService.generateGoogleMeetAuthUrl(JSON.stringify(state));
 
       default:
         throw new BadRequestException(

@@ -84,21 +84,12 @@ export const calendarOverlayHandler = async ({ ctx, input }: ListOptions) => {
   });
 
   // get all clanedar services
-  const calendarBusyTimesQuery = await getBusyCalendarTimes(
+  const calendarBusyTimes = await getBusyCalendarTimes(
     credentials,
     dateFrom,
     dateTo,
     composedSelectedCalendars
   );
-
-  if (!calendarBusyTimesQuery.success) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to fetch busy calendar times",
-    });
-  }
-
-  const calendarBusyTimes = calendarBusyTimesQuery.data;
 
   // Convert to users timezone
 

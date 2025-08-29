@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import { useIsPlatform } from "@calcom/atoms/hooks/useIsPlatform";
-import { MAX_EVENT_DURATION_MINUTES, MIN_EVENT_DURATION_MINUTES } from "@calcom/lib/constants";
 import type { CreateEventTypeFormValues } from "@calcom/lib/hooks/useCreateEventType";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { md } from "@calcom/lib/markdownIt";
@@ -66,13 +65,11 @@ export default function CreateEventTypeForm({
                 !isPlatform ? (
                   <Tooltip content={!isManagedEventType ? pageSlug : t("username_placeholder")}>
                     <span className="max-w-24 md:max-w-56">
-                      {`/${!isManagedEventType ? pageSlug : t("username_placeholder")}/`}
+                      /{!isManagedEventType ? pageSlug : t("username_placeholder")}/
                     </span>
                   </Tooltip>
                 ) : undefined
               }
-              containerClassName="[&>div]:gap-0"
-              className="pl-0"
               {...register("slug")}
               onChange={(e) => {
                 form.setValue("slug", slugify(e?.target.value), { shouldTouch: true });
@@ -93,13 +90,11 @@ export default function CreateEventTypeForm({
                   <Tooltip
                     content={`${urlPrefix}/${!isManagedEventType ? pageSlug : t("username_placeholder")}/`}>
                     <span className="max-w-24 md:max-w-56">
-                      {`${urlPrefix}/${!isManagedEventType ? pageSlug : t("username_placeholder")}/`}
+                      {urlPrefix}/{!isManagedEventType ? pageSlug : t("username_placeholder")}/
                     </span>
                   </Tooltip>
                 ) : undefined
               }
-              containerClassName="[&>div]:gap-0"
-              className="pl-0"
               {...register("slug")}
               onChange={(e) => {
                 form.setValue("slug", slugify(e?.target.value), { shouldTouch: true });
@@ -129,22 +124,11 @@ export default function CreateEventTypeForm({
             <TextField
               type="number"
               required
-              min={MIN_EVENT_DURATION_MINUTES}
-              max={MAX_EVENT_DURATION_MINUTES}
+              min="10"
               placeholder="15"
               label={t("duration")}
               className="pr-4"
-              {...register("length", {
-                valueAsNumber: true,
-                min: {
-                  value: MIN_EVENT_DURATION_MINUTES,
-                  message: t("duration_min_error", { min: MIN_EVENT_DURATION_MINUTES }),
-                },
-                max: {
-                  value: MAX_EVENT_DURATION_MINUTES,
-                  message: t("duration_max_error", { max: MAX_EVENT_DURATION_MINUTES }),
-                },
-              })}
+              {...register("length", { valueAsNumber: true })}
               addOnSuffix={t("minutes")}
             />
           </div>

@@ -31,7 +31,12 @@ function ValidateBookingName(validationOptions?: ValidationOptions) {
             return value.trim().length > 0;
           }
           if (typeof value === "object" && value !== null) {
-            return typeof value.firstName === "string" && value.firstName.trim().length > 0;
+            return (
+              typeof value.firstName === "string" &&
+              typeof value.lastName === "string" &&
+              value.firstName.trim().length > 0 &&
+              value.lastName.trim().length > 0
+            );
           }
           return false;
         },

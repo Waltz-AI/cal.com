@@ -19,8 +19,9 @@ import classNames from "@calcom/ui/classNames";
 import { Button } from "@calcom/ui/components/button";
 import { showToast } from "@calcom/ui/components/toast";
 
-import SingleForm from "../../components/SingleForm";
-import type { getServerSidePropsForSingleFormView as getServerSideProps } from "../../components/getServerSidePropsSingleForm";
+import SingleForm, {
+  getServerSidePropsForSingleFormView as getServerSideProps,
+} from "../../components/SingleForm";
 import {
   withRaqbSettingsAndWidgets,
   ConfigFor,
@@ -30,6 +31,8 @@ import {
   getQueryBuilderConfigForFormFields,
   type FormFieldsQueryBuilderConfigWithRaqbFields,
 } from "../../lib/getQueryBuilderConfig";
+
+export { getServerSideProps };
 
 const Result = ({
   formName,

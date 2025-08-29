@@ -1,4 +1,4 @@
-import { useEmbedBookerUrl } from "@calcom/lib/hooks/useBookerUrl";
+import { useBookerUrl } from "@calcom/lib/hooks/useBookerUrl";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 
 export const useEmbedTypes = () => {
@@ -319,6 +319,6 @@ export const useEmbedTypes = () => {
 };
 
 export const useEmbedCalOrigin = () => {
-  const bookerUrl = useEmbedBookerUrl();
+  const bookerUrl = useBookerUrl();
   return bookerUrl;
 };

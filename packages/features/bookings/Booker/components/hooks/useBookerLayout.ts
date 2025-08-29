@@ -15,9 +15,7 @@ import { getQueryParam } from "../../utils/query-param";
 
 export type UseBookerLayoutType = ReturnType<typeof useBookerLayout>;
 
-export const useBookerLayout = (
-  profileBookerLayouts: BookerEvent["profile"]["bookerLayouts"] | undefined | null
-) => {
+export const useBookerLayout = (event: Pick<BookerEvent, "profile"> | undefined | null) => {
   const [_layout, setLayout] = useBookerStore((state) => [state.layout, state.setLayout], shallow);
   const isEmbed = useIsEmbed();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -33,7 +31,7 @@ export const useBookerLayout = (
   const columnViewExtraDays = useRef<number>(
     isTablet ? extraDaysConfig[layout].tablet : extraDaysConfig[layout].desktop
   );
-  const bookerLayouts = profileBookerLayouts || defaultBookerLayoutSettings;
+  const bookerLayouts = event?.profile?.bookerLayouts || defaultBookerLayoutSettings;
   const defaultLayout = isEmbed
     ? validateLayout(embedUiConfig.layout) || bookerLayouts.defaultLayout
     : bookerLayouts.defaultLayout;

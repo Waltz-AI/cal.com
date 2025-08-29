@@ -21,7 +21,6 @@ import sanitizeCalendarObject from "@calcom/lib/sanitizeCalendarObject";
 import type { Person as AttendeeInCalendarEvent } from "@calcom/types/Calendar";
 import type {
   Calendar,
-  CalendarServiceEvent,
   CalendarEvent,
   CalendarEventType,
   EventBusyDate,
@@ -33,6 +32,7 @@ import type { CredentialPayload } from "@calcom/types/Credential";
 
 import { getLocation, getRichDescription } from "./CalEventParser";
 import { symmetricDecrypt } from "./crypto";
+import { formatCalEvent } from "./formatCalendarEvent";
 import logger from "./logger";
 
 const TIMEZONE_FORMAT = "YYYY-MM-DDTHH:mm:ss[Z]";
@@ -140,9 +140,10 @@ export default abstract class BaseCalendarService implements Calendar {
     return attendees;
   }
 
-  async createEvent(event: CalendarServiceEvent, credentialId: number): Promise<NewCalendarEventType> {
+  async createEvent(eventRaw: CalendarEvent, credentialId: number): Promise<NewCalendarEventType> {
     try {
-      const calendars = await this.listCalendars(event);
+      const calendars = await this.listCalendars(eventRaw);
+      const event = formatCalEvent(eventRaw);
       const uid = uuidv4();
 
       // We create local ICS files
@@ -152,7 +153,7 @@ export default abstract class BaseCalendarService implements Calendar {
         start: convertDate(event.startTime),
         duration: getDuration(event.startTime, event.endTime),
         title: event.title,
-        description: event.calendarDescription,
+        description: getRichDescription(event),
         location: getLocation(event),
         organizer: { email: event.organizer.email, name: event.organizer.name },
         attendees: this.getAttendees(event),

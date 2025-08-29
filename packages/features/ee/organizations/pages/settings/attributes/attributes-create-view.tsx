@@ -9,7 +9,6 @@ import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { trpc } from "@calcom/trpc/react";
 import { Button } from "@calcom/ui/components/button";
 import { showToast } from "@calcom/ui/components/toast";
-import { revalidateAttributesList } from "@calcom/web/app/(use-page-wrapper)/settings/organizations/(org-user-only)/members/actions";
 
 import { AttributeForm } from "./AttributesForm";
 
@@ -27,7 +26,6 @@ function CreateAttributesPage() {
   const mutation = trpc.viewer.attributes.create.useMutation({
     onSuccess: () => {
       showToast("Attribute created successfully", "success");
-      revalidateAttributesList();
       router.push("/settings/organizations/attributes");
     },
     onError: (err) => {

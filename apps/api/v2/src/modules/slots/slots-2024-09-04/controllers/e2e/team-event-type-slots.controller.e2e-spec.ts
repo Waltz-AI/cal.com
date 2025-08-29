@@ -21,7 +21,7 @@ import { ApiKeysRepositoryFixture } from "test/fixtures/repository/api-keys.repo
 import { BookingsRepositoryFixture } from "test/fixtures/repository/bookings.repository.fixture";
 import { EventTypesRepositoryFixture } from "test/fixtures/repository/event-types.repository.fixture";
 import { MembershipRepositoryFixture } from "test/fixtures/repository/membership.repository.fixture";
-import { SelectedSlotRepositoryFixture } from "test/fixtures/repository/selected-slot.repository.fixture";
+import { SelectedSlotsRepositoryFixture } from "test/fixtures/repository/selected-slots.repository.fixture";
 import { TeamRepositoryFixture } from "test/fixtures/repository/team.repository.fixture";
 import { UserRepositoryFixture } from "test/fixtures/repository/users.repository.fixture";
 import { randomString } from "test/utils/randomString";
@@ -44,7 +44,7 @@ describe("Slots 2024-09-04 Endpoints", () => {
     let membershipsRepositoryFixture: MembershipRepositoryFixture;
     let bookingsRepositoryFixture: BookingsRepositoryFixture;
     let apiKeysRepositoryFixture: ApiKeysRepositoryFixture;
-    let selectedSlotRepositoryFixture: SelectedSlotRepositoryFixture;
+    let selectedSlotsRepositoryFixture: SelectedSlotsRepositoryFixture;
 
     const teammateEmailOne = `slots-2024-09-04-user-1-team-slots-${randomString()}`;
     let teammateApiKeyString: string;
@@ -93,7 +93,7 @@ describe("Slots 2024-09-04 Endpoints", () => {
       membershipsRepositoryFixture = new MembershipRepositoryFixture(moduleRef);
       bookingsRepositoryFixture = new BookingsRepositoryFixture(moduleRef);
       apiKeysRepositoryFixture = new ApiKeysRepositoryFixture(moduleRef);
-      selectedSlotRepositoryFixture = new SelectedSlotRepositoryFixture(moduleRef);
+      selectedSlotsRepositoryFixture = new SelectedSlotsRepositoryFixture(moduleRef);
 
       teammateOne = await userRepositoryFixture.create({
         email: teammateEmailOne,
@@ -368,14 +368,14 @@ describe("Slots 2024-09-04 Endpoints", () => {
       );
       expect(slots).toEqual({ ...expectedSlotsUTC, "2050-09-05": expectedSlotsUTC2050_09_05 });
 
-      const dbSlot = await selectedSlotRepositoryFixture.getByUid(reservedSlot.reservationUid);
+      const dbSlot = await selectedSlotsRepositoryFixture.getByUid(reservedSlot.reservationUid);
       expect(dbSlot).toBeDefined();
       if (dbSlot) {
         const dbReleaseAt = DateTime.fromJSDate(dbSlot.releaseAt, { zone: "UTC" }).toISO();
         const expectedReleaseAt = DateTime.fromISO(now, { zone: "UTC" }).plus({ minutes: 10 }).toISO();
         expect(dbReleaseAt).toEqual(expectedReleaseAt);
       }
-      await selectedSlotRepositoryFixture.deleteByUId(reservedSlot.reservationUid);
+      await selectedSlotsRepositoryFixture.deleteByUId(reservedSlot.reservationUid);
       clear();
     });
 

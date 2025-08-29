@@ -1,16 +1,31 @@
 import prismaMock from "../../../../tests/libs/__mocks__/prismaMock";
 
-import type { Team } from "@prisma/client";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+import { TeamBilling } from "@calcom/features/ee/billing/teams";
+
+import { TRPCError } from "@trpc/server";
 
 import { TeamRepository } from "./team";
 
-describe("TeamRepository", () => {
-  let teamRepository: TeamRepository;
+vi.mock("@calcom/features/ee/billing/teams", () => ({
+  TeamBilling: {
+    findAndInit: vi.fn(),
+    findAndInitMany: vi.fn(),
+  },
+}));
 
+vi.mock("@calcom/lib/domainManager/organization", () => ({
+  deleteDomain: vi.fn(),
+}));
+
+vi.mock("@calcom/features/ee/teams/lib/removeMember", () => ({
+  default: vi.fn(),
+}));
+
+describe("TeamRepository", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    teamRepository = new TeamRepository(prismaMock);
   });
 
   afterEach(() => {
@@ -20,7 +35,7 @@ describe("TeamRepository", () => {
   describe("findById", () => {
     it("should return null if team is not found", async () => {
       prismaMock.team.findUnique.mockResolvedValue(null);
-      const result = await teamRepository.findById({ id: 1 });
+      const result = await TeamRepository.findById({ id: 1 });
       expect(result).toBeNull();
     });
 
@@ -39,102 +54,83 @@ describe("TeamRepository", () => {
         isPlatform: true,
         requestedSlug: null,
       };
-      prismaMock.team.findUnique.mockResolvedValue(mockTeam as unknown as Team);
-      const result = await teamRepository.findById({ id: 1 });
+      prismaMock.team.findUnique.mockResolvedValue(mockTeam);
+      const result = await TeamRepository.findById({ id: 1 });
       expect(result).toEqual(mockTeam);
     });
   });
 
   describe("deleteById", () => {
     it("should delete team and related data", async () => {
-      const mockDeletedTeam = { id: 1, name: "Deleted Team" };
-      const deleteManyEventTypeMock = vi.fn();
-      const deleteManyMembershipMock = vi.fn();
-      const deleteTeamMock = vi.fn().mockResolvedValue(mockDeletedTeam as unknown as Team);
-      prismaMock.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          ...prismaMock,
-          eventType: {
-            ...prismaMock.eventType,
-            deleteMany: deleteManyEventTypeMock,
-          },
-          membership: {
-            ...prismaMock.membership,
-            deleteMany: deleteManyMembershipMock,
-          },
-          team: {
-            ...prismaMock.team,
-            delete: deleteTeamMock,
-          },
-        };
-        return callback(mockTx);
-      });
+      const mockDeletedTeam = { id: 1, name: "Deleted Team", isOrganization: true, slug: "deleted-team" };
+      prismaMock.team.delete.mockResolvedValue(mockDeletedTeam);
 
-      const result = await teamRepository.deleteById({ id: 1 });
+      const mockTeamBilling = { cancel: vi.fn() };
+      TeamBilling.findAndInit.mockResolvedValue(mockTeamBilling);
 
-      expect(deleteManyEventTypeMock).toHaveBeenCalledWith({
+      // Mock the Prisma transaction
+      const mockTransaction = {
+        eventType: { deleteMany: vi.fn() },
+        membership: { deleteMany: vi.fn() },
+        team: { delete: vi.fn().mockResolvedValue(mockDeletedTeam) },
+      };
+
+      //   Mock the transaction calls so we can spy on it
+      prismaMock.$transaction.mockImplementation((callback) => callback(mockTransaction));
+
+      const result = await TeamRepository.deleteById({ id: 1 });
+
+      expect(mockTransaction.eventType.deleteMany).toHaveBeenCalledWith({
         where: {
           teamId: 1,
           schedulingType: "MANAGED",
         },
       });
-      expect(deleteManyMembershipMock).toHaveBeenCalledWith({
+      expect(mockTransaction.membership.deleteMany).toHaveBeenCalledWith({
         where: {
           teamId: 1,
         },
       });
-      expect(deleteTeamMock).toHaveBeenCalledWith({
+      expect(mockTransaction.team.delete).toHaveBeenCalledWith({
         where: {
           id: 1,
         },
       });
+
+      expect(mockTeamBilling.cancel).toHaveBeenCalled();
       expect(result).toEqual(mockDeletedTeam);
     });
   });
 
-  describe("findAllByParentId", () => {
-    it("should return all teams with given parentId", async () => {
-      const mockTeams = [{ id: 1 }, { id: 2 }];
-      prismaMock.team.findMany.mockResolvedValue(mockTeams as unknown as Team[]);
-      const result = await teamRepository.findAllByParentId({ parentId: 1 });
-      expect(prismaMock.team.findMany).toHaveBeenCalledWith({
-        where: { parentId: 1 },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          logoUrl: true,
-          parentId: true,
-          metadata: true,
-          isOrganization: true,
-          organizationSettings: true,
-          isPlatform: true,
-        },
-      });
-      expect(result).toEqual(mockTeams);
+  describe("inviteMemberByToken", () => {
+    it("should throw error if verification token is not found", async () => {
+      prismaMock.verificationToken.findFirst.mockResolvedValue(null);
+      await expect(TeamRepository.inviteMemberByToken("invalid-token", 1)).rejects.toThrow(TRPCError);
+    });
+
+    it("should create membership and update billing", async () => {
+      const mockToken = { teamId: 1, team: { name: "Test Team" } };
+      prismaMock.verificationToken.findFirst.mockResolvedValue(mockToken);
+
+      const mockTeamBilling = { updateQuantity: vi.fn() };
+      TeamBilling.findAndInit.mockResolvedValue(mockTeamBilling);
+
+      const result = await TeamRepository.inviteMemberByToken("valid-token", 1);
+
+      expect(prismaMock.membership.create).toHaveBeenCalled();
+      expect(mockTeamBilling.updateQuantity).toHaveBeenCalled();
+      expect(result).toBe("Test Team");
     });
   });
 
-  describe("findTeamWithMembers", () => {
-    it("should return team with its members", async () => {
-      const mockTeam = { id: 1, members: [] };
-      prismaMock.team.findUnique.mockResolvedValue(mockTeam as unknown as Team & { members: [] });
-      const result = await teamRepository.findTeamWithMembers(1);
-      expect(prismaMock.team.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 },
-        select: {
-          members: {
-            select: {
-              accepted: true,
-            },
-          },
-          id: true,
-          metadata: true,
-          parentId: true,
-          isOrganization: true,
-        },
-      });
-      expect(result).toEqual(mockTeam);
+  describe("publish", () => {
+    it("should call publish on TeamBilling", async () => {
+      const mockTeamBilling = { publish: vi.fn() };
+      TeamBilling.findAndInit.mockResolvedValue(mockTeamBilling);
+
+      await TeamRepository.publish(1);
+
+      expect(mockTeamBilling.publish).toHaveBeenCalled();
     });
   });
 });

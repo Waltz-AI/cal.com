@@ -21,17 +21,15 @@ export const ChargeCardDialog = (props: IRescheduleDialog) => {
   const { t } = useLocale();
   const utils = trpc.useUtils();
   const { isOpenDialog, setIsOpenDialog, bookingId } = props;
-  const [chargeError, setChargeError] = useState<string | null>(null);
-
+  const [chargeError, setChargeError] = useState(false);
   const chargeCardMutation = trpc.viewer.payments.chargeCard.useMutation({
     onSuccess: () => {
       utils.viewer.bookings.invalidate();
       setIsOpenDialog(false);
-      setChargeError(null);
       showToast("Charge successful", "success");
     },
-    onError: (error) => {
-      setChargeError(error.message || t("error_charging_card"));
+    onError: () => {
+      setChargeError(true);
     },
   });
 
@@ -54,7 +52,7 @@ export const ChargeCardDialog = (props: IRescheduleDialog) => {
             {chargeError && (
               <div className="mt-4 flex text-red-500">
                 <Icon name="triangle-alert" className="mr-2 h-5 w-5 " aria-hidden="true" />
-                <p className="text-sm">{chargeError}</p>
+                <p className="text-sm">{t("error_charging_card")}</p>
               </div>
             )}
 
@@ -62,13 +60,12 @@ export const ChargeCardDialog = (props: IRescheduleDialog) => {
               <DialogClose />
               <Button
                 data-testid="send_request"
-                disabled={chargeCardMutation.isPending}
-                onClick={() => {
-                  setChargeError(null);
+                disabled={chargeCardMutation.isPending || chargeError}
+                onClick={() =>
                   chargeCardMutation.mutate({
                     bookingId,
-                  });
-                }}>
+                  })
+                }>
                 {t("charge_attendee", currencyStringParams)}
               </Button>
             </DialogFooter>

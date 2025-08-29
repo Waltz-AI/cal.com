@@ -80,7 +80,7 @@ export class OrganizationsTeamsBookingsController {
     IsAdminAPIEnabledGuard
   )
   @ApiOperation({
-    summary: "Get booking references",
+    summary: "Get 'Booking References' for a booking",
   })
   @HttpCode(HttpStatus.OK)
   async getBookingReferences(

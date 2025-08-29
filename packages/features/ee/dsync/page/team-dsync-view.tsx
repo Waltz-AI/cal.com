@@ -12,7 +12,7 @@ import { showToast } from "@calcom/ui/components/toast";
 import ConfigureDirectorySync from "../components/ConfigureDirectorySync";
 
 // For Hosted Cal - Team view
-const DirectorySync = ({ permissions }: { permissions?: { canEdit: boolean } }) => {
+const DirectorySync = () => {
   const { t } = useLocale();
   const router = useRouter();
 
@@ -34,10 +34,6 @@ const DirectorySync = ({ permissions }: { permissions?: { canEdit: boolean } }) 
 
   if (error) {
     showToast(error.message, "error");
-  }
-
-  if (!permissions?.canEdit) {
-    router.push("/404");
   }
 
   return (

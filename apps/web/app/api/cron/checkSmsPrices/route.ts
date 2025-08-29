@@ -46,13 +46,13 @@ async function postHandler(req: NextRequest) {
       if (!log.smsSid) return;
 
       try {
-        const { price, numSegments } = await twilio.getMessageInfo(log.smsSid);
+        const price = await twilio.getPriceForSMS(log.smsSid);
         const credits = price ? creditService.calculateCreditsFromPrice(price) : null;
         if (!credits) return;
 
         const updatedLog = await prisma.creditExpenseLog.update({
           where: { id: log.id },
-          data: { credits, smsSegments: numSegments },
+          data: { credits },
           select: {
             creditBalance: {
               select: {

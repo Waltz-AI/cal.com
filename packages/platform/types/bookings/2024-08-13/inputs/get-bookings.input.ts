@@ -86,8 +86,8 @@ export class GetBookingsInput_2024_08_13 {
   @ApiProperty({
     type: String,
     required: false,
-    description: "Filter bookings by the booking Uid.",
-    example: "2NtaeaVcKfpmSZ4CthFdfk",
+    description: "Filter bookings by booking UID.",
+    example: "r81Y7uwoMLfJMNmvEX76oX",
   })
   bookingUid?: string;
 

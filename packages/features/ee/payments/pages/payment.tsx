@@ -1,9 +1,7 @@
 import type { GetServerSidePropsContext } from "next";
 import { z } from "zod";
 
-import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { getClientSecretFromPayment } from "@calcom/features/ee/payments/pages/getClientSecretFromPayment";
-import { shouldHideBrandingForEvent } from "@calcom/lib/hideBranding";
 import prisma from "@calcom/prisma";
 import { BookingStatus } from "@calcom/prisma/enums";
 import { paymentDataSelect } from "@calcom/prisma/selects/payment";
@@ -18,9 +16,7 @@ const querySchema = z.object({
 
 export const getServerSideProps = async (context: GetServerSidePropsContext) => {
   const { uid } = querySchema.parse(context.query);
-  const session = await getServerSession({ req: context.req });
-
-  const rawPayment = await prisma.payment.findUnique({
+  const rawPayment = await prisma.payment.findFirst({
     where: {
       uid,
     },
@@ -55,12 +51,7 @@ export const getServerSideProps = async (context: GetServerSidePropsContext) => 
   const profile = {
     name: eventType.team?.name || user?.name || null,
     theme: (!eventType.team?.name && user?.theme) || null,
-    hideBranding: await shouldHideBrandingForEvent({
-      eventTypeId: eventType.id,
-      team: eventType.team,
-      owner: eventType.users[0] ?? null,
-      organizationId: session?.user?.profile?.organizationId ?? session?.user?.org?.id ?? null,
-    }),
+    hideBranding: eventType.team?.hideBranding || user?.hideBranding || null,
   };
 
   if (

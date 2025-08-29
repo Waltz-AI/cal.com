@@ -13,5 +13,3 @@ export * from "./embed";
 export * from "./oauth-clients";
 export * from "./routing-forms";
 export * from "./me";
-export * from "./pagination/pagination.input";
-export * from "./pagination/pagination.output";

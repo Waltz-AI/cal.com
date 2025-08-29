@@ -3,7 +3,6 @@ import { findTeamMembersMatchingAttributeLogic } from "@calcom/lib/raqb/findTeam
 import type { AttributesQueryValue } from "@calcom/lib/raqb/types";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import type { RRResetInterval } from "@calcom/prisma/client";
-import type { RRTimestampBasis } from "@calcom/prisma/enums";
 import { SchedulingType } from "@calcom/prisma/enums";
 import type { CredentialPayload } from "@calcom/types/Credential";
 
@@ -82,12 +81,7 @@ export type EventType = {
   assignAllTeamMembers: boolean;
   assignRRMembersUsingSegment: boolean;
   rrSegmentQueryValue: AttributesQueryValue | null | undefined;
-  team: {
-    id: number;
-    parentId: number | null;
-    rrResetInterval: RRResetInterval | null;
-    rrTimestampBasis: RRTimestampBasis;
-  } | null;
+  team: { id: number; parentId: number | null; rrResetInterval: RRResetInterval | null } | null;
 };
 
 export function getNormalizedHosts<User extends BaseUser, Host extends BaseHost<User>>({

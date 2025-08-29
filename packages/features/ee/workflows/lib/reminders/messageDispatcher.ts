@@ -14,13 +14,10 @@ export async function sendSmsOrFallbackEmail(props: {
     phoneNumber: string;
     body: string;
     sender: string;
-    bodyWithoutOptOut?: string;
     bookingUid?: string | null;
     userId?: number | null;
     teamId?: number | null;
     isWhatsapp?: boolean;
-    contentSid?: string;
-    contentVariables?: Record<string, string>;
   };
   fallbackData?: {
     email: string;
@@ -41,7 +38,7 @@ export async function sendSmsOrFallbackEmail(props: {
       await sendOrScheduleWorkflowEmails({
         to: [fallbackData.email],
         subject: fallbackData.t("notification_about_your_booking"),
-        html: twilioData.bodyWithoutOptOut || twilioData.body,
+        html: twilioData.body,
         replyTo: fallbackData.replyTo,
       });
     }
@@ -61,13 +58,10 @@ export async function scheduleSmsOrFallbackEmail(props: {
     body: string;
     scheduledDate: Date;
     sender: string;
-    bodyWithoutOptOut?: string;
     bookingUid?: string | null;
     userId?: number | null;
     teamId?: number | null;
     isWhatsapp?: boolean;
-    contentSid?: string;
-    contentVariables?: Record<string, string>;
   };
   fallbackData?: {
     email: string;
@@ -98,7 +92,7 @@ export async function scheduleSmsOrFallbackEmail(props: {
       await sendOrScheduleWorkflowEmails({
         to: [fallbackData.email],
         subject: fallbackData.t("notification_about_your_booking"),
-        html: twilioData.bodyWithoutOptOut || twilioData.body,
+        html: twilioData.body,
         replyTo: fallbackData.replyTo,
         sendAt: twilioData.scheduledDate,
         referenceUid: reminder.uuid || undefined,

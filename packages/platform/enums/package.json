@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "main": "./dist/index.ts",
   "types": "./dist/index.ts",
-  "private": true,
   "exports": {
     ".": {
       "require": "./dist/index.js",

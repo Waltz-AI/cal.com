@@ -8,16 +8,7 @@ describe("Tests to Check if Event Types have empty Assignment", () => {
       checkForEmptyAssignment({
         assignedUsers: [],
         assignAllTeamMembers: false,
-        hosts: [
-          {
-            userId: 101,
-            isFixed: false,
-            priority: 2,
-            weight: 100,
-            scheduleId: null,
-            user: { timeZone: "America/New_York" },
-          },
-        ],
+        hosts: [{ userId: 101, isFixed: false, priority: 2, weight: 100, scheduleId: null }],
         isManagedEventType: true,
       })
     ).toBe(true);
@@ -70,16 +61,7 @@ describe("Tests to Check if Event Types have empty Assignment", () => {
       checkForEmptyAssignment({
         assignedUsers: [],
         assignAllTeamMembers: false,
-        hosts: [
-          {
-            userId: 101,
-            isFixed: false,
-            priority: 2,
-            weight: 100,
-            scheduleId: null,
-            user: { timeZone: "America/New_York" },
-          },
-        ],
+        hosts: [{ userId: 101, isFixed: false, priority: 2, weight: 100, scheduleId: null }],
         isManagedEventType: false,
       })
     ).toBe(false);
@@ -112,16 +94,7 @@ describe("Tests to Check if Event Types have empty Assignment", () => {
           },
         ],
         assignAllTeamMembers: false,
-        hosts: [
-          {
-            userId: 101,
-            isFixed: false,
-            priority: 2,
-            weight: 100,
-            scheduleId: null,
-            user: { timeZone: "America/New_York" },
-          },
-        ],
+        hosts: [],
         isManagedEventType: true,
       })
     ).toBe(false);

@@ -15,7 +15,7 @@ const sortUsersByDynamicList = <TUser extends { username: string | null }>(
   });
 };
 
-export const _getLocationValuesForDb = <
+const _getLocationValuesForDb = <
   TUser extends {
     username: string | null;
     metadata: Prisma.JsonValue;
@@ -42,15 +42,9 @@ export const _getLocationValuesForDb = <
         credentials: firstDynamicGroupMember.credentials,
       });
 
-    const defaultConferencingApp = firstDynamicGroupMemberMetadata?.defaultConferencingApp;
-
-    const hasMemberSetConferencingPreference =
-      !!defaultConferencingApp?.appSlug || !!defaultConferencingApp?.appLink;
-
     firstDynamicGroupMemberDefaultLocationUrl =
-      (hasMemberSetConferencingPreference
-        ? defaultConferencingApp?.appLink
-        : firstDynamicGroupMemberDelegationCredentialConferencingAppLocation) ?? null;
+      firstDynamicGroupMemberMetadata?.defaultConferencingApp?.appLink ||
+      firstDynamicGroupMemberDelegationCredentialConferencingAppLocation;
 
     locationBodyString = firstDynamicGroupMemberDefaultLocationUrl || locationBodyString;
   }

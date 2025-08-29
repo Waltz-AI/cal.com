@@ -44,23 +44,6 @@ const FormCardActions = ({ deleteField, duplicateField }: FormCardActionsProps) 
 
   if (actions.length === 0) return null;
 
-  // If only one action, show a single icon button
-  if (actions.length === 1) {
-    const action = actions[0];
-    return (
-      <Button
-        type="button"
-        variant="icon"
-        color={action.color || "minimal"}
-        className="ml-2"
-        onClick={action.onClick}
-        StartIcon={action.icon}
-        title={action.label}
-      />
-    );
-  }
-
-  // If multiple actions, show dropdown
   return (
     <Dropdown>
       <DropdownMenuTrigger asChild>

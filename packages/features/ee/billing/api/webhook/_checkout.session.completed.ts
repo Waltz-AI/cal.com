@@ -1,5 +1,5 @@
 import stripe from "@calcom/features/ee/payments/server/stripe";
-import { CreditsRepository } from "@calcom/lib/server/repository/credits";
+import prisma from "@calcom/prisma";
 
 import type { SWHMap } from "./__handler";
 import { HttpCode } from "./__handler";
@@ -39,29 +39,31 @@ async function saveToCreditBalance({
   teamId?: number;
   nrOfCredits: number;
 }) {
-  const creditBalance = await CreditsRepository.findCreditBalance({ teamId, userId });
-
-  let creditBalanceId = creditBalance?.id;
+  const creditBalance = await prisma.creditBalance.findUnique({
+    where: {
+      teamId,
+      userId: !teamId ? userId : undefined,
+    },
+    select: {
+      id: true,
+    },
+  });
 
   if (creditBalance) {
-    await CreditsRepository.updateCreditBalance({
-      id: creditBalance.id,
+    await prisma.creditBalance.update({
+      where: {
+        id: creditBalance.id,
+      },
       data: { additionalCredits: { increment: nrOfCredits }, limitReachedAt: null, warningSentAt: null },
     });
-  } else {
-    const newCreditBalance = await CreditsRepository.createCreditBalance({
+    return;
+  }
+  await prisma.creditBalance.create({
+    data: {
       teamId: teamId,
       userId: !teamId ? userId : undefined,
       additionalCredits: nrOfCredits,
-    });
-    creditBalanceId = newCreditBalance.id;
-  }
-
-  if (creditBalanceId) {
-    await CreditsRepository.createCreditPurchaseLog({
-      credits: nrOfCredits,
-      creditBalanceId,
-    });
-  }
+    },
+  });
 }
 export default handler;

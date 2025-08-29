@@ -80,7 +80,7 @@ function RequireEmailOrPhone(validationOptions?: ValidationOptions) {
       constraints: [],
       validator: {
         validate(_: unknown, args: ValidationArguments) {
-          const obj = args.object as CreateBookingAttendee;
+          const obj = args.object as Attendee;
 
           const hasPhoneNumber = !!obj.phoneNumber;
           const hasEmail = !!obj.email;
@@ -95,7 +95,7 @@ function RequireEmailOrPhone(validationOptions?: ValidationOptions) {
 }
 
 @RequireEmailOrPhone()
-class CreateBookingAttendee {
+class Attendee {
   @ApiProperty({
     type: String,
     description: "The name of the attendee.",
@@ -145,61 +145,6 @@ class CreateBookingAttendee {
   language?: BookingLanguageType;
 }
 
-class Routing {
-  @ApiProperty({
-    type: Number,
-    description: "The ID of the routing form response that determined this booking assignment.",
-    example: 123,
-  })
-  @IsInt()
-  responseId!: number;
-
-  @ApiProperty({
-    type: [Number],
-    description: "Array of team member IDs that were routed to handle this booking.",
-    example: [101, 102],
-  })
-  @IsArray()
-  @IsInt({ each: true })
-  teamMemberIds!: number[];
-
-  @ApiPropertyOptional({
-    type: String,
-    description: "The email of the team member assigned to handle this booking.",
-    example: "john.doe@example.com",
-  })
-  @IsString()
-  @IsOptional()
-  teamMemberEmail?: string;
-
-  @ApiPropertyOptional({
-    type: Boolean,
-    description: "Whether to skip contact owner assignment from CRM integration.",
-    example: true,
-  })
-  @IsBoolean()
-  @IsOptional()
-  skipContactOwner?: boolean;
-
-  @ApiPropertyOptional({
-    type: String,
-    description: "The CRM application slug for integration.",
-    example: "salesforce",
-  })
-  @IsString()
-  @IsOptional()
-  crmAppSlug?: string;
-
-  @ApiPropertyOptional({
-    type: String,
-    description: "The CRM owner record type for contact assignment.",
-    example: "Account",
-  })
-  @IsString()
-  @IsOptional()
-  crmOwnerRecordType?: string;
-}
-
 @ApiExtraModels(
   BookingInputAddressLocation_2024_08_13,
   BookingInputAttendeeAddressLocation_2024_08_13,
@@ -222,13 +167,13 @@ export class CreateBookingInput_2024_08_13 {
   start!: string;
 
   @ApiProperty({
-    type: CreateBookingAttendee,
+    type: Attendee,
     description: "The attendee's details.",
   })
   @IsDefined()
   @ValidateNested()
-  @Type(() => CreateBookingAttendee)
-  attendee!: CreateBookingAttendee;
+  @Type(() => Attendee)
+  attendee!: Attendee;
 
   @ApiPropertyOptional({
     type: Object,
@@ -357,20 +302,6 @@ export class CreateBookingInput_2024_08_13 {
     If not provided then event type default length will be used for the booking.`,
   })
   lengthInMinutes?: number;
-
-  @ApiPropertyOptional({
-    type: Routing,
-    description:
-      "Routing information from routing forms that determined the booking assignment. Both responseId and teamMemberIds are required if provided.",
-    example: {
-      responseId: 123,
-      teamMemberIds: [101, 102],
-    },
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => Routing)
-  routing?: Routing;
 }
 
 export class CreateInstantBookingInput_2024_08_13 extends CreateBookingInput_2024_08_13 {

@@ -9,7 +9,7 @@ import { deleteWebhookScheduledTriggers } from "@calcom/features/webhooks/lib/sc
 import { buildNonDelegationCredential } from "@calcom/lib/delegationCredential/server";
 import { isPrismaObjOrUndefined } from "@calcom/lib/isPrismaObj";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
-import { DailyLocationType } from "@calcom/lib/location";
+import { AttendeeInPersonType } from "@calcom/lib/location";
 import { deletePayment } from "@calcom/lib/payment/deletePayment";
 import { getTranslation } from "@calcom/lib/server/i18n";
 import { bookingMinimalSelect, prisma } from "@calcom/prisma";
@@ -108,13 +108,13 @@ const handleDeleteCredential = async ({
       // To avoid type errors, need to stringify and parse JSON to use array methods
       const locations = locationsSchema.parse(eventType.locations);
 
-      const doesDailyVideoAlreadyExists = locations.some((location) =>
-        location.type.includes(DailyLocationType)
+      const doesAttendeeInPersonAlreadyExists = locations.some((location) =>
+        location.type.includes(AttendeeInPersonType)
       );
 
       const updatedLocations: TlocationsSchema = locations.reduce((acc: TlocationsSchema, location) => {
         if (location.type.includes(integrationQuery)) {
-          if (!doesDailyVideoAlreadyExists) acc.push({ type: DailyLocationType });
+          if (!doesAttendeeInPersonAlreadyExists) acc.push({ type: AttendeeInPersonType });
         } else {
           acc.push(location);
         }
@@ -136,7 +136,7 @@ const handleDeleteCredential = async ({
       credential.app?.categories.includes(AppCategories.calendar) &&
       eventType.destinationCalendar?.credential?.appId === credential.appId
     ) {
-      const destinationCalendar = await prisma.destinationCalendar.findUnique({
+      const destinationCalendar = await prisma.destinationCalendar.findFirst({
         where: {
           id: eventType.destinationCalendar?.id,
         },

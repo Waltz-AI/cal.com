@@ -6,7 +6,6 @@ import { orgDomainConfig } from "@calcom/ee/organizations/lib/orgDomains";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import getBookingInfo from "@calcom/features/bookings/lib/getBookingInfo";
 import { getDefaultEvent } from "@calcom/lib/defaultEvents";
-import { shouldHideBrandingForEvent } from "@calcom/lib/hideBranding";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
 import { maybeGetBookingUidFromSeat } from "@calcom/lib/server/maybeGetBookingUidFromSeat";
@@ -77,8 +76,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   let rescheduledToUid: string | null = null;
   if (bookingInfo.rescheduled) {
-    const bookingRepo = new BookingRepository(prisma);
-    const rescheduledTo = await bookingRepo.findFirstBookingByReschedule({
+    const rescheduledTo = await BookingRepository.findFirstBookingByReschedule({
       originalBookingUid: bookingInfo.uid,
     });
     rescheduledToUid = rescheduledTo?.uid ?? null;
@@ -90,8 +88,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   } | null = null;
 
   if (bookingInfo.fromReschedule) {
-    const bookingRepo = new BookingRepository(prisma);
-    previousBooking = await bookingRepo.findReschedulerByUid({
+    previousBooking = await BookingRepository.findReschedulerByUid({
       uid: bookingInfo.fromReschedule,
     });
   }
@@ -220,30 +217,17 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   const internalNotes = await getInternalNotePresets(eventType.team?.id ?? eventType.parent?.teamId ?? null);
 
-  // Filter out organizer information if hideOrganizerEmail is true
-  const sanitizedPreviousBooking =
-    eventType.hideOrganizerEmail &&
-    previousBooking &&
-    previousBooking.rescheduledBy === bookingInfo.user?.email
-      ? { ...previousBooking, rescheduledBy: bookingInfo.user?.name }
-      : previousBooking;
-
   return {
     props: {
       orgSlug: currentOrgDomain,
       themeBasis: eventType.team ? eventType.team.slug : eventType.users[0]?.username,
-      hideBranding: await shouldHideBrandingForEvent({
-        eventTypeId: eventType.id,
-        team: eventType.team,
-        owner: eventType.users[0] ?? null,
-        organizationId: session?.user?.profile?.organizationId ?? session?.user?.org?.id ?? null,
-      }),
+      hideBranding: eventType.team ? eventType.team.hideBranding : eventType.users[0].hideBranding,
       profile,
       eventType,
       recurringBookings: await getRecurringBookings(bookingInfo.recurringEventId),
       dynamicEventName: bookingInfo?.eventType?.eventName || "",
       bookingInfo,
-      previousBooking: sanitizedPreviousBooking,
+      previousBooking,
       paymentStatus: payment,
       ...(tz && { tz }),
       userTimeFormat,

@@ -1,6 +1,5 @@
 import { FeaturesRepository } from "@calcom/features/flags/features.repository";
 import { getTranslation } from "@calcom/lib/server/i18n";
-import prisma from "@calcom/prisma";
 
 import { TRPCError } from "@trpc/server";
 
@@ -11,7 +10,6 @@ import {
   DelegationCredentialUpdateSchema,
   DelegationCredentialDeleteSchema,
   DelegationCredentialToggleEnabledSchema,
-  DelegationCredentialGetAffectedMembersForDisableSchema,
 } from "./schema";
 
 const checkDelegationCredentialFeature = async ({
@@ -23,7 +21,7 @@ const checkDelegationCredentialFeature = async ({
 }) => {
   const user = ctx.user;
   const t = await getTranslation(user.locale ?? "en", "common");
-  const featureRepo = new FeaturesRepository(prisma);
+  const featureRepo = new FeaturesRepository();
 
   if (!user.organizationId) {
     throw new TRPCError({
@@ -77,13 +75,6 @@ export const delegationCredentialRouter = router({
     .input(DelegationCredentialToggleEnabledSchema)
     .mutation(async (opts) => {
       const handler = await import("./toggleEnabled.handler").then((mod) => mod.default);
-      return handler(opts);
-    }),
-  getAffectedMembersForDisable: authedOrgAdminProcedure
-    .use(checkDelegationCredentialFeature)
-    .input(DelegationCredentialGetAffectedMembersForDisableSchema)
-    .query(async (opts) => {
-      const handler = await import("./getAffectedMembersForDisable.handler").then((mod) => mod.default);
       return handler(opts);
     }),
   delete: authedOrgAdminProcedure

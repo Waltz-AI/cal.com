@@ -6,37 +6,45 @@ import logger from "@calcom/lib/logger";
 import { findTeamMembersMatchingAttributeLogic } from "@calcom/lib/raqb/findTeamMembersMatchingAttributeLogic";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { withReporting } from "@calcom/lib/sentryWrapper";
-import { RoutingFormResponseRepository } from "@calcom/lib/server/repository/formResponse";
-import prisma from "@calcom/prisma";
+import { prisma } from "@calcom/prisma";
+import type { App_RoutingForms_Form } from "@calcom/prisma/client";
+import { RoutingFormSettings } from "@calcom/prisma/zod-utils";
 import type { ZResponseInputSchema } from "@calcom/trpc/server/routers/viewer/routing-forms/response.schema";
 
 import { TRPCError } from "@trpc/server";
 
 import isRouter from "../lib/isRouter";
+import { onFormSubmission } from "../trpc/utils";
+import type { FormResponse, SerializableForm } from "../types/types";
 import routerGetCrmContactOwnerEmail from "./crmRouting/routerGetCrmContactOwnerEmail";
-import { onSubmissionOfFormResponse, type TargetRoutingFormForResponse } from "./formSubmissionUtils";
+
+export type Form = SerializableForm<
+  App_RoutingForms_Form & {
+    user: {
+      id: number;
+      email: string;
+    };
+    team: {
+      parentId: number | null;
+    } | null;
+  }
+>;
 
 const moduleLogger = logger.getSubLogger({ prefix: ["routing-forms/lib/handleResponse"] });
 
 const _handleResponse = async ({
   response,
-  identifierKeyedResponse,
   form,
   // Unused but probably should be used
   // formFillerId,
   chosenRouteId,
   isPreview,
-  queueFormResponse,
-  fetchCrm,
 }: {
   response: z.infer<typeof ZResponseInputSchema>["response"];
-  identifierKeyedResponse: Record<string, string | string[]> | null;
-  form: TargetRoutingFormForResponse;
+  form: Form;
   formFillerId: string;
   chosenRouteId: string | null;
   isPreview: boolean;
-  queueFormResponse?: boolean;
-  fetchCrm?: boolean;
 }) => {
   try {
     if (!form.fields) {
@@ -91,12 +99,31 @@ const _handleResponse = async ({
       });
     }
 
+    const settings = RoutingFormSettings.parse(form.settings);
+    let userWithEmails: string[] = [];
+    if (form.teamId && (settings?.sendToAll || settings?.sendUpdatesTo?.length)) {
+      const whereClause: Prisma.MembershipWhereInput = { teamId: form.teamId };
+      if (!settings?.sendToAll) {
+        whereClause.userId = { in: settings.sendUpdatesTo };
+      }
+      const userEmails = await prisma.membership.findMany({
+        where: whereClause,
+        select: {
+          user: {
+            select: {
+              email: true,
+            },
+          },
+        },
+      });
+      userWithEmails = userEmails.map((userEmail) => userEmail.user.email);
+    }
+
     const chosenRoute = serializableFormWithFields.routes?.find((route) => route.id === chosenRouteId);
     let teamMemberIdsMatchingAttributeLogic: number[] | null = null;
     let crmContactOwnerEmail: string | null = null;
     let crmContactOwnerRecordType: string | null = null;
     let crmAppSlug: string | null = null;
-    let crmRecordId: string | null = null;
     let timeTaken: Record<string, number | null> = {};
     if (chosenRoute) {
       if (isRouter(chosenRoute)) {
@@ -109,18 +136,14 @@ const _handleResponse = async ({
       const getRoutedMembers = async () =>
         await Promise.all([
           (async () => {
-            const contactOwnerQuery =
-              identifierKeyedResponse && fetchCrm
-                ? await routerGetCrmContactOwnerEmail({
-                    attributeRoutingConfig: chosenRoute.attributeRoutingConfig,
-                    identifierKeyedResponse,
-                    action: chosenRoute.action,
-                  })
-                : null;
+            const contactOwnerQuery = await routerGetCrmContactOwnerEmail({
+              attributeRoutingConfig: chosenRoute.attributeRoutingConfig,
+              response,
+              action: chosenRoute.action,
+            });
             crmContactOwnerEmail = contactOwnerQuery?.email ?? null;
             crmContactOwnerRecordType = contactOwnerQuery?.recordType ?? null;
             crmAppSlug = contactOwnerQuery?.crmAppSlug ?? null;
-            crmRecordId = contactOwnerQuery?.recordId ?? null;
           })(),
           (async () => {
             const teamMembersMatchingAttributeLogicWithResult =
@@ -162,59 +185,45 @@ const _handleResponse = async ({
     } else {
       // It currently happens for a Router route. Such a route id isn't present in the form.routes
     }
-    let dbFormResponse, queuedFormResponse;
-    if (!isPreview) {
-      const formResponseRepo = new RoutingFormResponseRepository(prisma);
-      if (queueFormResponse) {
-        queuedFormResponse = await formResponseRepo.recordQueuedFormResponse({
-          formId: form.id,
-          response,
-          chosenRouteId,
-        });
-        dbFormResponse = null;
-      } else {
-        dbFormResponse = await formResponseRepo.recordFormResponse({
-          formId: form.id,
-          response,
-          chosenRouteId,
-        });
-        queuedFormResponse = null;
 
-        await onSubmissionOfFormResponse({
-          form: serializableFormWithFields,
-          formResponseInDb: dbFormResponse,
-          chosenRouteAction: chosenRoute ? ("action" in chosenRoute ? chosenRoute.action : null) : null,
-        });
-      }
+    let dbFormResponse;
+    if (!isPreview) {
+      dbFormResponse = await prisma.app_RoutingForms_FormResponse.create({
+        data: {
+          // TODO: Why do we not save formFillerId available in the input?
+          // formFillerId,
+          formId: form.id,
+          response: response,
+          chosenRouteId,
+        },
+      });
+
+      await onFormSubmission(
+        { ...serializableFormWithFields, userWithEmails },
+        dbFormResponse.response as FormResponse,
+        dbFormResponse.id,
+        chosenRoute ? ("action" in chosenRoute ? chosenRoute.action : undefined) : undefined
+      );
     } else {
       moduleLogger.debug("Dry run mode - Form response not stored and also webhooks and emails not sent");
-      if (queueFormResponse) {
-        queuedFormResponse = {
-          id: "00000000-0000-0000-0000-000000000000",
-          formId: form.id,
-          response,
-        };
-      } else {
-        // Create a mock response for dry run
-        dbFormResponse = {
-          id: 0,
-          formId: form.id,
-          response,
-          chosenRouteId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      }
+      // Create a mock response for dry run
+      dbFormResponse = {
+        id: 0,
+        formId: form.id,
+        response,
+        chosenRouteId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
     }
+
     return {
       isPreview: !!isPreview,
       formResponse: dbFormResponse,
-      queuedFormResponse,
       teamMembersMatchingAttributeLogic: teamMemberIdsMatchingAttributeLogic,
       crmContactOwnerEmail,
       crmContactOwnerRecordType,
       crmAppSlug,
-      crmRecordId,
       attributeRoutingConfig: chosenRoute
         ? "attributeRoutingConfig" in chosenRoute
           ? chosenRoute.attributeRoutingConfig

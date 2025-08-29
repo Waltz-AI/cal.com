@@ -2,7 +2,6 @@ import type { GetServerSidePropsContext } from "next";
 
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { UserRepository } from "@calcom/lib/server/repository/user";
-import prisma from "@calcom/prisma";
 
 export const getServerSideProps = async (context: GetServerSidePropsContext) => {
   const { req } = context;
@@ -13,8 +12,7 @@ export const getServerSideProps = async (context: GetServerSidePropsContext) => 
     return { redirect: { permanent: false, destination: "/auth/login" } };
   }
 
-  const userRepo = new UserRepository(prisma);
-  const user = await userRepo.findUserTeams({
+  const user = await UserRepository.findUserTeams({
     id: session.user.id,
   });
 

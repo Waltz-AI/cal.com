@@ -5,7 +5,6 @@ import { Editable } from "@/ee/event-types/event-types_2024_04_15/inputs/enums/e
 import { BaseField } from "@/ee/event-types/event-types_2024_04_15/inputs/enums/field-type";
 import { UpdateEventTypeInput_2024_04_15 } from "@/ee/event-types/event-types_2024_04_15/inputs/update-event-type.input";
 import { EventTypeOutput } from "@/ee/event-types/event-types_2024_04_15/outputs/event-type.output";
-import { systemBeforeFieldEmail } from "@/ee/event-types/event-types_2024_06_14/transformers";
 import { MembershipsRepository } from "@/modules/memberships/memberships.repository";
 import { PrismaWriteService } from "@/modules/prisma/prisma-write.service";
 import { SelectedCalendarsRepository } from "@/modules/selected-calendars/selected-calendars.repository";
@@ -18,6 +17,7 @@ import {
   updateEventType,
   EventTypesPublic,
   getEventTypesPublic,
+  systemBeforeFieldEmail,
 } from "@calcom/platform-libraries/event-types";
 import { EventType } from "@calcom/prisma/client";
 
@@ -139,16 +139,31 @@ export class EventTypesService_2024_04_15 {
     ) {
       bookingFields.push({ ...systemBeforeFieldEmail, type: BaseField.email, editable: Editable.system });
     }
-
-    await updateEventType({
-      input: { id: eventTypeId, ...body, bookingFields },
-      ctx: {
-        user: eventTypeUser,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        prisma: this.dbWrite.prisma,
-      },
-    });
+    try {
+      await updateEventType({
+        input: { id: eventTypeId, ...body, bookingFields },
+        ctx: {
+          user: eventTypeUser,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          prisma: this.dbWrite.prisma,
+        },
+      });
+    } catch (error) {
+      // Check if this is a duplicate slug error
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "BAD_REQUEST" &&
+        "message" in error &&
+        error.message === "error_event_type_url_duplicate"
+      ) {
+        throw new BadRequestException("Event type with this slug already exists");
+      }
+      // Re-throw other errors
+      throw error;
+    }
 
     const eventType = await this.getUserEventTypeForAtom(user, eventTypeId);
 

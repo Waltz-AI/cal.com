@@ -22,7 +22,7 @@ import {
   RecurringBookingOutput_2024_08_13,
   SeatedAttendee,
 } from "@calcom/platform-types";
-import { Booking, BookingSeat } from "@calcom/prisma/client";
+import { Booking, BookingReference, BookingSeat } from "@calcom/prisma/client";
 
 export const bookingResponsesSchema = z
   .object({
@@ -90,7 +90,7 @@ type DatabaseMetadata = z.infer<typeof bookingMetadataSchema>;
 export class OutputBookingsService_2024_08_13 {
   constructor(private readonly bookingsRepository: BookingsRepository_2024_08_13) {}
 
-  async getOutputBooking(databaseBooking: DatabaseBooking) {
+  getOutputBooking(databaseBooking: DatabaseBooking) {
     const dateStart = DateTime.fromISO(databaseBooking.startTime.toISOString());
     const dateEnd = DateTime.fromISO(databaseBooking.endTime.toISOString());
     const duration = dateEnd.diff(dateStart, "minutes").minutes;
@@ -101,14 +101,6 @@ export class OutputBookingsService_2024_08_13 {
     );
     const metadata = safeParse(bookingMetadataSchema, databaseBooking.metadata, defaultBookingMetadata);
     const location = metadata?.videoCallUrl || databaseBooking.location;
-    const rescheduledToInfo = databaseBooking.rescheduled
-      ? await this.getRescheduledToInfo(databaseBooking.uid)
-      : undefined;
-
-    const rescheduledToUid = rescheduledToInfo?.uid;
-    const rescheduledByEmail = databaseBooking.rescheduled
-      ? rescheduledToInfo?.rescheduledBy
-      : databaseBooking.rescheduledBy;
 
     const booking = {
       id: databaseBooking.id,
@@ -117,10 +109,10 @@ export class OutputBookingsService_2024_08_13 {
       description: databaseBooking.description,
       hosts: [this.getHost(databaseBooking.user)],
       status: databaseBooking.status.toLowerCase(),
-      cancellationReason:
-        databaseBooking.status === "CANCELLED" ? databaseBooking.cancellationReason : undefined,
-      cancelledByEmail: databaseBooking.status === "CANCELLED" ? databaseBooking.cancelledBy : undefined,
+      cancellationReason: databaseBooking.cancellationReason || undefined,
+      cancelledByEmail: databaseBooking.cancelledBy || undefined,
       reschedulingReason: bookingResponses?.rescheduledReason,
+      rescheduledByEmail: databaseBooking.rescheduledBy || undefined,
       rescheduledFromUid: databaseBooking.fromReschedule || undefined,
       start: databaseBooking.startTime,
       end: databaseBooking.endTime,
@@ -145,8 +137,6 @@ export class OutputBookingsService_2024_08_13 {
       updatedAt: databaseBooking.updatedAt,
       rating: databaseBooking.rating,
       icsUid: databaseBooking.iCalUID,
-      rescheduledToUid,
-      rescheduledByEmail,
     };
 
     const bookingTransformed = plainToClass(BookingOutput_2024_08_13, booking, { strategy: "excludeAll" });
@@ -154,14 +144,6 @@ export class OutputBookingsService_2024_08_13 {
     bookingTransformed.bookingFieldsResponses = bookingResponses;
     bookingTransformed.metadata = this.getUserDefinedMetadata(metadata);
     return bookingTransformed;
-  }
-
-  async getRescheduledToInfo(bookingUid: string): Promise<{ uid?: string; rescheduledBy?: string | null }> {
-    const rescheduledTo = await this.bookingsRepository.getByFromReschedule(bookingUid);
-    return {
-      uid: rescheduledTo?.uid,
-      rescheduledBy: rescheduledTo?.rescheduledBy,
-    };
   }
 
   getUserDefinedMetadata(databaseMetadata: DatabaseMetadata) {
@@ -222,10 +204,10 @@ export class OutputBookingsService_2024_08_13 {
       description: databaseBooking.description,
       hosts: [this.getHost(databaseBooking.user)],
       status: databaseBooking.status.toLowerCase(),
-      cancellationReason:
-        databaseBooking.status === "CANCELLED" ? databaseBooking.cancellationReason : undefined,
-      cancelledByEmail: databaseBooking.status === "CANCELLED" ? databaseBooking.cancelledBy : undefined,
+      cancellationReason: databaseBooking.cancellationReason || undefined,
+      cancelledByEmail: databaseBooking.cancelledBy || undefined,
       reschedulingReason: bookingResponses?.rescheduledReason,
+      rescheduledByEmail: databaseBooking.rescheduledBy || undefined,
       rescheduledFromUid: databaseBooking.fromReschedule || undefined,
       start: databaseBooking.startTime,
       end: databaseBooking.endTime,
@@ -262,28 +244,20 @@ export class OutputBookingsService_2024_08_13 {
     return bookingTransformed;
   }
 
-  async getOutputCreateSeatedBooking(
+  getOutputCreateSeatedBooking(
     databaseBooking: DatabaseBooking,
     seatUid: string
-  ): Promise<CreateSeatedBookingOutput_2024_08_13> {
-    const getSeatedBookingOutput = await this.getOutputSeatedBooking(databaseBooking);
+  ): CreateSeatedBookingOutput_2024_08_13 {
+    const getSeatedBookingOutput = this.getOutputSeatedBooking(databaseBooking);
     return { ...getSeatedBookingOutput, seatUid };
   }
 
-  async getOutputSeatedBooking(databaseBooking: DatabaseBooking) {
+  getOutputSeatedBooking(databaseBooking: DatabaseBooking) {
     const dateStart = DateTime.fromISO(databaseBooking.startTime.toISOString());
     const dateEnd = DateTime.fromISO(databaseBooking.endTime.toISOString());
     const duration = dateEnd.diff(dateStart, "minutes").minutes;
     const metadata = safeParse(bookingMetadataSchema, databaseBooking.metadata, defaultBookingMetadata);
     const location = metadata?.videoCallUrl || databaseBooking.location;
-    const rescheduledToInfo = databaseBooking.rescheduled
-      ? await this.getRescheduledToInfo(databaseBooking.uid)
-      : undefined;
-
-    const rescheduledToUid = rescheduledToInfo?.uid;
-    const rescheduledByEmail = databaseBooking.rescheduled
-      ? rescheduledToInfo?.rescheduledBy
-      : databaseBooking.rescheduledBy;
 
     const booking = {
       id: databaseBooking.id,
@@ -292,8 +266,6 @@ export class OutputBookingsService_2024_08_13 {
       description: databaseBooking.description,
       hosts: [this.getHost(databaseBooking.user)],
       status: databaseBooking.status.toLowerCase(),
-      cancellationReason:
-        databaseBooking.status === "CANCELLED" ? databaseBooking.cancellationReason : undefined,
       rescheduledFromUid: databaseBooking.fromReschedule || undefined,
       start: databaseBooking.startTime,
       end: databaseBooking.endTime,
@@ -310,8 +282,6 @@ export class OutputBookingsService_2024_08_13 {
       updatedAt: databaseBooking.updatedAt,
       rating: databaseBooking.rating,
       icsUid: databaseBooking.iCalUID,
-      rescheduledToUid,
-      rescheduledByEmail,
     };
 
     const parsed = plainToClass(GetSeatedBookingOutput_2024_08_13, booking, { strategy: "excludeAll" });
@@ -404,8 +374,7 @@ export class OutputBookingsService_2024_08_13 {
       description: databaseBooking.description,
       hosts: [this.getHost(databaseBooking.user)],
       status: databaseBooking.status.toLowerCase(),
-      cancellationReason:
-        databaseBooking.status === "CANCELLED" ? databaseBooking.cancellationReason : undefined,
+      cancellationReason: databaseBooking.cancellationReason || undefined,
       rescheduledFromUid: databaseBooking.fromReschedule || undefined,
       start: databaseBooking.startTime,
       end: databaseBooking.endTime,

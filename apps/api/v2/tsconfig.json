@@ -15,6 +15,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@prisma/client/*": ["@calcom/prisma/client/*"],
+      "@calcom/prisma/zod-utils": ["../../../packages/prisma/zod-utils.ts"],
+
       "@calcom/platform-constants": ["../../../packages/platform/constants/index.ts"],
       "@calcom/platform-types": ["../../../packages/platform/types/index.ts"],
       "@calcom/platform-utils": ["../../../packages/platform/utils/index.ts"],
@@ -23,11 +25,7 @@
       "@calcom/platform-libraries/slots": ["../../../packages/platform/libraries/slots.ts"],
       "@calcom/platform-libraries/emails": ["../../../packages/platform/libraries/emails.ts"],
       "@calcom/platform-libraries/schedules": ["../../../packages/platform/libraries/schedules.ts"],
-      "@calcom/platform-libraries/app-store": ["../../../packages/platform/libraries/app-store.ts"],
-      "@calcom/platform-libraries/workflows": ["../../../packages/platform/libraries/workflows.ts"],
-      "@calcom/platform-libraries/conferencing": ["../../../packages/platform/libraries/conferencing.ts"],
-      "@calcom/platform-libraries/repositories": ["../../../packages/platform/libraries/repositories.ts"],
-      "@calcom/platform-libraries/bookings": ["../../../packages/platform/libraries/bookings.ts"]
+      "@calcom/platform-libraries/app-store": ["../../../packages/platform/libraries/app-store.ts"]
     },
     "incremental": true,
     "skipLibCheck": true,

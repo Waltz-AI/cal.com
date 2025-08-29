@@ -48,7 +48,6 @@ export const OAuthClientsList = ({ oauthClients, isDeleting, handleDelete }: OAu
                   onDelete={handleDelete}
                   areEmailsEnabled={client.areEmailsEnabled}
                   areDefaultEventTypesEnabled={client.areDefaultEventTypesEnabled}
-                  areCalendarEventsEnabled={client.areCalendarEventsEnabled}
                   organizationId={client.organizationId}
                 />
               );

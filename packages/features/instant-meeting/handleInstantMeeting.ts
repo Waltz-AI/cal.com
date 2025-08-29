@@ -200,7 +200,6 @@ async function handler(req: NextApiRequest) {
       name: fullName,
       timeZone: attendeeTimezone,
       locale: attendeeLanguage ?? "en",
-      phoneNumber: reqBody.attendeePhoneNumber ?? null,
     },
   ];
 
@@ -210,7 +209,6 @@ async function handler(req: NextApiRequest) {
       name: "",
       timeZone: attendeeTimezone,
       locale: "en",
-      phoneNumber: null,
     });
     return guestArray;
   }, [] as typeof invitee);

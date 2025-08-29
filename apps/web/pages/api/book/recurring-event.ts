@@ -7,7 +7,6 @@ import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowE
 import getIP from "@calcom/lib/getIP";
 import { checkCfTurnstileToken } from "@calcom/lib/server/checkCfTurnstileToken";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
-import { piiHasher } from "@calcom/lib/server/PiiHasher";
 
 // @TODO: Didn't look at the contents of this function in order to not break old booking page.
 
@@ -38,7 +37,7 @@ async function handler(req: NextApiRequest & RequestMeta) {
 
   await checkRateLimitAndThrowError({
     rateLimitingType: "core",
-    identifier: piiHasher.hash(userIp),
+    identifier: userIp,
   });
   const session = await getServerSession({ req });
   /* To mimic API behavior and comply with types */

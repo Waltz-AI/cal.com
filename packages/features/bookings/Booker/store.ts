@@ -36,7 +36,6 @@ type StoreInitializeType = {
   teamMemberEmail?: string | null;
   crmOwnerRecordType?: string | null;
   crmAppSlug?: string | null;
-  crmRecordId?: string | null;
   isPlatform?: boolean;
   allowUpdatingUrlParams?: boolean;
 };
@@ -83,11 +82,7 @@ export type BookerStore = {
    * Date selected by user (exact day). Format is YYYY-MM-DD.
    */
   selectedDate: string | null;
-  setSelectedDate: (params: {
-    date: string | null;
-    omitUpdatingParams?: boolean;
-    preventMonthSwitching?: boolean;
-  }) => void;
+  setSelectedDate: (date: string | null, omitUpdatingParams?: boolean) => void;
   addToSelectedDate: (days: number) => void;
   /**
    * Multiple Selected Dates and Times
@@ -168,7 +163,6 @@ export type BookerStore = {
   teamMemberEmail?: string | null;
   crmOwnerRecordType?: string | null;
   crmAppSlug?: string | null;
-  crmRecordId?: string | null;
   isPlatform?: boolean;
   allowUpdatingUrlParams?: boolean;
 };
@@ -196,7 +190,7 @@ export const useBookerStore = createWithEqualityFn<BookerStore>((set, get) => ({
     return set({ layout });
   },
   selectedDate: getQueryParam("date") || null,
-  setSelectedDate: ({ date: selectedDate, omitUpdatingParams = false, preventMonthSwitching = false }) => {
+  setSelectedDate: (selectedDate: string | null, omitUpdatingParams = false) => {
     // unset selected date
     if (!selectedDate) {
       removeQueryParam("date");
@@ -211,8 +205,7 @@ export const useBookerStore = createWithEqualityFn<BookerStore>((set, get) => ({
     }
 
     // Setting month make sure small calendar in fullscreen layouts also updates.
-    // preventMonthSwitching is true in monthly view
-    if (!preventMonthSwitching && newSelection.month() !== currentSelection.month()) {
+    if (newSelection.month() !== currentSelection.month()) {
       set({ month: newSelection.format("YYYY-MM") });
       if (!omitUpdatingParams && (!get().isPlatform || get().allowUpdatingUrlParams)) {
         updateQueryParam("month", newSelection.format("YYYY-MM"));
@@ -269,7 +262,7 @@ export const useBookerStore = createWithEqualityFn<BookerStore>((set, get) => ({
     if (!get().isPlatform || get().allowUpdatingUrlParams) {
       updateQueryParam("month", month ?? "");
     }
-    get().setSelectedDate({ date: null });
+    get().setSelectedDate(null);
   },
   dayCount: BOOKER_NUMBER_OF_DAYS_TO_LOAD > 0 ? BOOKER_NUMBER_OF_DAYS_TO_LOAD : null,
   setDayCount: (dayCount: number | null) => {
@@ -313,7 +306,6 @@ export const useBookerStore = createWithEqualityFn<BookerStore>((set, get) => ({
     teamMemberEmail,
     crmOwnerRecordType,
     crmAppSlug,
-    crmRecordId,
     isPlatform = false,
     allowUpdatingUrlParams = true,
   }: StoreInitializeType) => {
@@ -332,8 +324,7 @@ export const useBookerStore = createWithEqualityFn<BookerStore>((set, get) => ({
       get().rescheduledBy === rescheduledBy &&
       get().teamMemberEmail === teamMemberEmail &&
       get().crmOwnerRecordType === crmOwnerRecordType &&
-      get().crmAppSlug === crmAppSlug &&
-      get().crmRecordId === crmRecordId
+      get().crmAppSlug
     )
       return;
     set({
@@ -356,7 +347,6 @@ export const useBookerStore = createWithEqualityFn<BookerStore>((set, get) => ({
       teamMemberEmail,
       crmOwnerRecordType,
       crmAppSlug,
-      crmRecordId,
       isPlatform,
       allowUpdatingUrlParams,
     });
@@ -466,7 +456,6 @@ export const useInitializeBookerStore = ({
   teamMemberEmail,
   crmOwnerRecordType,
   crmAppSlug,
-  crmRecordId,
   isPlatform = false,
   allowUpdatingUrlParams = true,
 }: StoreInitializeType) => {
@@ -490,7 +479,6 @@ export const useInitializeBookerStore = ({
       teamMemberEmail,
       crmOwnerRecordType,
       crmAppSlug,
-      crmRecordId,
       isPlatform,
       allowUpdatingUrlParams,
     });
@@ -513,7 +501,6 @@ export const useInitializeBookerStore = ({
     teamMemberEmail,
     crmOwnerRecordType,
     crmAppSlug,
-    crmRecordId,
     isPlatform,
     allowUpdatingUrlParams,
   ]);

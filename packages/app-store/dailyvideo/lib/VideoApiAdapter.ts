@@ -25,28 +25,6 @@ import {
   ZGetMeetingTokenResponseSchema,
 } from "./types";
 
-const meetingParticipantSchema = z.object({
-  user_id: z.string().nullable(),
-  participant_id: z.string(),
-  user_name: z.string().nullable(),
-  join_time: z.number(),
-  duration: z.number(),
-});
-
-const meetingSessionSchema = z.object({
-  id: z.string(),
-  room: z.string(),
-  start_time: z.number(),
-  duration: z.number(),
-  ongoing: z.boolean(),
-  max_participants: z.number(),
-  participants: z.array(meetingParticipantSchema),
-});
-
-const getMeetingInformationResponseSchema = z.object({
-  data: z.array(meetingSessionSchema),
-});
-
 export interface DailyEventResult {
   id: string;
   name: string;
@@ -62,35 +40,6 @@ export interface DailyVideoCallData {
   id: string;
   password: string;
   url: string;
-}
-
-// Regions available to create DailyVideo Rooms in.
-const REGION_CODES = [
-  "af-south-1",
-  "ap-northeast-2",
-  "ap-southeast-1",
-  "ap-southeast-2",
-  "ap-south-1",
-  "eu-central-1",
-  "eu-west-2",
-  "sa-east-1",
-  "us-east-1",
-  "us-west-2",
-] as const;
-
-type RoomGeo = (typeof REGION_CODES)[number];
-
-function getDailyVideoRegionFromEnv(): RoomGeo | undefined {
-  if (!process?.env?.DAILY_VIDEO_REGION) return;
-  const isRoomGeo = (value: string): value is RoomGeo => REGION_CODES.includes(value as RoomGeo);
-  function assertIsDailyVideoRegion(value: string): asserts value is RoomGeo {
-    if (!isRoomGeo(value)) {
-      throw new Error(`Invalid region code: ${value}. Must be one of: ${REGION_CODES.join(", ")}`);
-    }
-  }
-  const region = process.env.DAILY_VIDEO_REGION;
-  assertIsDailyVideoRegion(region);
-  return region;
 }
 
 const isS3StorageEnabled =
@@ -197,13 +146,10 @@ export const updateMeetingTokenIfExpired = async ({
   return meetingToken;
 };
 
-export const generateGuestMeetingTokenFromOwnerMeetingToken = async ({
-  meetingToken,
-  userId,
-}: {
-  meetingToken: string | null;
-  userId?: number;
-}) => {
+export const generateGuestMeetingTokenFromOwnerMeetingToken = async (
+  meetingToken: string | null,
+  userId?: number
+) => {
   if (!meetingToken) return null;
 
   const token = await fetcher(`/meeting-tokens/${meetingToken}`).then(ZGetMeetingTokenResponseSchema.parse);
@@ -254,15 +200,11 @@ export const setEnableRecordingUIAndUserIdForOrganizer = async (
 };
 
 const DailyVideoApiAdapter = (): VideoApiAdapter => {
-  async function createOrUpdateMeeting(
-    endpoint: string,
-    event: CalendarEvent,
-    region?: RoomGeo
-  ): Promise<VideoCallData> {
+  async function createOrUpdateMeeting(endpoint: string, event: CalendarEvent): Promise<VideoCallData> {
     if (!event.uid) {
       throw new Error("We need need the booking uid to create the Daily reference in DB");
     }
-    const body = await translateEvent(event, region);
+    const body = await translateEvent(event);
     const dailyEvent = await postToDailyAPI(endpoint, body).then(dailyReturnTypeSchema.parse);
     const meetingToken = await postToDailyAPI("/meeting-tokens", {
       properties: {
@@ -281,7 +223,7 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
     });
   }
 
-  const translateEvent = async (event: CalendarEvent, region?: RoomGeo) => {
+  const translateEvent = async (event: CalendarEvent) => {
     // Documentation at: https://docs.daily.co/reference#list-rooms
     // Adds 14 days from the end of the booking as the expiration date
     const exp = Math.round(new Date(event.endTime).getTime() / 1000) + 60 * 60 * 24 * 14;
@@ -303,7 +245,6 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
     return {
       privacy: "public",
       properties: {
-        ...(region ? { geo: region } : {}),
         enable_prejoin_ui: true,
         enable_knocking: true,
         enable_screenshare: true,
@@ -340,7 +281,7 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
     };
   };
 
-  async function createInstantMeeting(endTime: string, region?: RoomGeo) {
+  async function createInstantMeeting(endTime: string) {
     // added a 1 hour buffer for room expiration
     const exp = Math.round(new Date(endTime).getTime() / 1000) + 60 * 60;
     const { scale_plan: scalePlan } = await getDailyAppKeys();
@@ -352,7 +293,6 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
     const body = {
       privacy: "public",
       properties: {
-        ...(region ? { geo: region } : {}),
         enable_prejoin_ui: true,
         enable_knocking: true,
         enable_screenshare: true,
@@ -404,22 +344,20 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
       url: dailyEvent.url,
     });
   }
-  // Region on which the DailyVideo room is created can be controlled by ENV var
-  // undefined region leaves the choice to DailyVideo
-  const region = getDailyVideoRegionFromEnv();
+
   return {
     /** Daily doesn't need to return busy times, so we return empty */
     getAvailability: () => {
       return Promise.resolve([]);
     },
     createMeeting: async (event: CalendarEvent): Promise<VideoCallData> =>
-      createOrUpdateMeeting("/rooms", event, region),
+      createOrUpdateMeeting("/rooms", event),
     deleteMeeting: async (uid: string): Promise<void> => {
       await fetcher(`/rooms/${uid}`, { method: "DELETE" });
       return Promise.resolve();
     },
     updateMeeting: (bookingRef: PartialReference, event: CalendarEvent): Promise<VideoCallData> =>
-      createOrUpdateMeeting(`/rooms/${bookingRef.uid}`, event, region),
+      createOrUpdateMeeting(`/rooms/${bookingRef.uid}`, event),
     getRecordings: async (roomName: string): Promise<GetRecordingsResponseSchema> => {
       try {
         const res = await fetcher(`/recordings?room_name=${roomName}`).then(
@@ -430,7 +368,7 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
         throw new Error("Something went wrong! Unable to get recording");
       }
     },
-    createInstantCalVideoRoom: (endTime: string) => createInstantMeeting(endTime, region),
+    createInstantCalVideoRoom: (endTime: string) => createInstantMeeting(endTime),
     getRecordingDownloadLink: async (recordingId: string): Promise<GetAccessLinkResponseSchema> => {
       try {
         const res = await fetcher(`/recordings/${recordingId}/access-link?valid_for_secs=43200`).then(
@@ -521,17 +459,6 @@ const DailyVideoApiAdapter = (): VideoApiAdapter => {
       } catch (err) {
         console.error("err", err);
         throw new Error(`Something went wrong! Unable to checkIfRoomNameMatchesInRecording. ${err}`);
-      }
-    },
-    getMeetingInformation: async (roomName: string) => {
-      try {
-        const res = await fetcher(`/meetings?room=${encodeURIComponent(roomName)}`).then(
-          getMeetingInformationResponseSchema.parse
-        );
-        return res;
-      } catch (err) {
-        console.error("err", err);
-        throw new Error("Something went wrong! Unable to get meeting information");
       }
     },
   };

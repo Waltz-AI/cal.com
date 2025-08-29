@@ -1,12 +1,11 @@
 import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
-import { PrismaWriteService } from "@/modules/prisma/prisma-write.service";
 import { Injectable } from "@nestjs/common";
 
-import type { Prisma } from "@calcom/prisma/client";
+import { Prisma } from "@calcom/prisma/client";
 
 @Injectable()
 export class OrganizationsDelegationCredentialRepository {
-  constructor(private readonly dbRead: PrismaReadService, private readonly dbWrite: PrismaWriteService) {}
+  constructor(private readonly dbRead: PrismaReadService) {}
 
   async findById(delegationCredentialId: string) {
     return this.dbRead.prisma.delegationCredential.findUnique({ where: { id: delegationCredentialId } });
@@ -23,7 +22,7 @@ export class OrganizationsDelegationCredentialRepository {
     delegationCredentialId: string,
     data: Prisma.DelegationCredentialUncheckedUpdateInput
   ) {
-    return this.dbWrite.prisma.delegationCredential.update({
+    return this.dbRead.prisma.delegationCredential.update({
       where: { id: delegationCredentialId },
       data,
       include: { workspacePlatform: true },

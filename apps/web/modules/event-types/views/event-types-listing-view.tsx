@@ -16,8 +16,6 @@ import CreateEventTypeDialog from "@calcom/features/eventtypes/components/Create
 import { DuplicateDialog } from "@calcom/features/eventtypes/components/DuplicateDialog";
 import { InfiniteSkeletonLoader } from "@calcom/features/eventtypes/components/SkeletonLoader";
 import { APP_NAME, WEBSITE_URL } from "@calcom/lib/constants";
-import { extractHostTimezone } from "@calcom/lib/hashedLinksUtils";
-import { filterActiveLinks } from "@calcom/lib/hashedLinksUtils";
 import { useCopy } from "@calcom/lib/hooks/useCopy";
 import { useDebounce } from "@calcom/lib/hooks/useDebounce";
 import { useInViewObserver } from "@calcom/lib/hooks/useInViewObserver";
@@ -261,7 +259,7 @@ export const InfiniteEventTypeList = ({
   const [privateLinkCopyIndices, setPrivateLinkCopyIndices] = useState<Record<string, number>>({});
 
   const utils = trpc.useUtils();
-  const mutation = trpc.viewer.loggedInViewerRouter.eventTypeOrder.useMutation({
+  const mutation = trpc.viewer.eventTypeOrder.useMutation({
     onError: async (err) => {
       console.error(err.message);
       // REVIEW: Should we invalidate the entire router or just the `getByViewer` query?
@@ -469,14 +467,6 @@ export const InfiniteEventTypeList = ({
     return deleteDialogTypeSchedulingType === SchedulingType.MANAGED ? "_managed" : "";
   };
 
-  const userTimezone = extractHostTimezone({
-    userId: firstItem.userId,
-    teamId: firstItem?.teamId,
-    hosts: firstItem?.hosts,
-    owner: firstItem?.owner,
-    team: firstItem?.team,
-  });
-
   return (
     <div className="bg-default border-subtle flex flex-col overflow-hidden rounded-md border">
       <ul ref={parent} className="divide-subtle !static w-full divide-y" data-testid="event-types">
@@ -484,17 +474,11 @@ export const InfiniteEventTypeList = ({
           return page?.eventTypes?.map((type, index) => {
             const embedLink = `${group.profile.slug}/${type.slug}`;
             const calLink = `${bookerUrl}/${embedLink}`;
-
-            const activeHashedLinks = type.hashedLink ? filterActiveLinks(type.hashedLink, userTimezone) : [];
-
-            // Ensure index is within bounds for active links
-            const currentIndex = privateLinkCopyIndices[type.slug] ?? 0;
-            const safeIndex = activeHashedLinks.length > 0 ? currentIndex % activeHashedLinks.length : 0;
-
             const isPrivateURLEnabled =
-              activeHashedLinks.length > 0 ? activeHashedLinks[safeIndex]?.link : "";
+              type.hashedLink && type.hashedLink.length > 0
+                ? type.hashedLink[privateLinkCopyIndices[type.slug] ?? 0]?.link
+                : "";
             const placeholderHashedLink = `${bookerUrl}/d/${isPrivateURLEnabled}/${type.slug}`;
-
             const isManagedEventType = type.schedulingType === SchedulingType.MANAGED;
             const isChildrenManagedEventType =
               type.metadata?.managedEventConfig !== undefined &&
@@ -596,8 +580,8 @@ export const InfiniteEventTypeList = ({
                                         copyToClipboard(placeholderHashedLink);
                                         setPrivateLinkCopyIndices((prev) => {
                                           const prevIndex = prev[type.slug] ?? 0;
-                                          const nextIndex = (prevIndex + 1) % activeHashedLinks.length;
-                                          return { ...prev, [type.slug]: nextIndex };
+                                          prev[type.slug] = (prevIndex + 1) % type.hashedLink.length;
+                                          return prev;
                                         });
                                       }}
                                     />
@@ -669,7 +653,7 @@ export const InfiniteEventTypeList = ({
                                           setDeleteDialogSchedulingType(type.schedulingType);
                                         }}
                                         StartIcon="trash"
-                                        className="w-full rounded-t-none">
+                                        className="w-full rounded-none">
                                         {t("delete")}
                                       </DropdownItem>
                                     </DropdownMenuItem>
@@ -766,7 +750,7 @@ export const InfiniteEventTypeList = ({
                                     setDeleteDialogSchedulingType(type.schedulingType);
                                   }}
                                   StartIcon="trash"
-                                  className="w-full rounded-t-none">
+                                  className="w-full rounded-none">
                                   {t("delete")}
                                 </DropdownItem>
                               </DropdownMenuItem>
@@ -774,7 +758,7 @@ export const InfiniteEventTypeList = ({
                           )}
                           <DropdownMenuSeparator />
                           {!isManagedEventType && (
-                            <div className="hover:bg-subtle flex h-9 cursor-pointer flex-row items-center justify-between rounded-b-lg px-4 py-2 transition">
+                            <div className="hover:bg-subtle flex h-9 cursor-pointer flex-row items-center justify-between px-4 py-2 transition">
                               <Skeleton
                                 as={Label}
                                 htmlFor="hiddenSwitch"
@@ -944,10 +928,7 @@ const InfiniteScrollMain = ({
 
 type Props = {
   userEventGroupsData: GetUserEventGroupsResponse;
-  user: {
-    id: number;
-    completedOnboarding?: boolean;
-  } | null;
+  user: RouterOutputs["viewer"]["me"]["get"];
 };
 
 export const EventTypesCTA = ({ userEventGroupsData }: Omit<Props, "user">) => {

@@ -1,9 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { checkAdminOrOwner } from "@calcom/features/auth/lib/checkAdminOrOwner";
-import { RoleManagementFactory } from "@calcom/features/pbac/services/role-management.factory";
 import { getBookerBaseUrlSync } from "@calcom/lib/getBookerUrl/client";
-import { TeamRepository } from "@calcom/lib/server/repository/team";
 import { UserRepository } from "@calcom/lib/server/repository/user";
 import { prisma } from "@calcom/prisma";
 import type { TrpcSessionUser } from "@calcom/trpc/server/types";
@@ -19,7 +17,7 @@ type ListMembersHandlerOptions = {
   input: TListMembersInputSchema;
 };
 
-const userSelect = {
+const userSelect = Prisma.validator<Prisma.UserSelect>()({
   username: true,
   email: true,
   name: true,
@@ -28,7 +26,7 @@ const userSelect = {
   bio: true,
   disableImpersonation: true,
   lastActiveAt: true,
-} satisfies Prisma.UserSelect;
+});
 
 export const listMembersHandler = async ({ ctx, input }: ListMembersHandlerOptions) => {
   const { cursor, limit, teamId, searchTerm } = input;
@@ -65,7 +63,6 @@ export const listMembersHandler = async ({ ctx, input }: ListMembersHandlerOptio
       role: true,
       accepted: true,
       teamId: true,
-      customRoleId: true,
       user: { select: userSelect },
     },
     cursor: cursor ? { id: cursor } : undefined,
@@ -79,45 +76,16 @@ export const listMembersHandler = async ({ ctx, input }: ListMembersHandlerOptio
     nextCursor = nextItem?.id;
   }
 
-  const teamRepo = new TeamRepository(prisma);
-  const team = await teamRepo.findById({ id: input.teamId });
-
-  const organizationId = team?.parentId || teamId;
-
-  // Get custom roles if PBAC is enabled
-  let customRoles: { [key: string]: { id: string; name: string } } = {};
-  try {
-    const roleManager = await RoleManagementFactory.getInstance().createRoleManager(organizationId);
-    if (roleManager.isPBACEnabled) {
-      const roles = await roleManager.getTeamRoles(teamId);
-      customRoles = roles.reduce((acc, role) => {
-        acc[role.id] = role;
-        return acc;
-      }, {} as { [key: string]: { id: string; name: string } });
-    }
-  } catch (error) {
-    // PBAC not enabled or error occurred, continue with traditional roles
-  }
-
   const membersWithApps = await Promise.all(
     teamMembers.map(async (member) => {
-      const user = await new UserRepository(prisma).enrichUserWithItsProfile({
+      const user = await UserRepository.enrichUserWithItsProfile({
         user: member.user,
       });
       const { profile, ...restUser } = user;
-
-      // Determine the role to display
-      let customRole = null;
-
-      if (member.customRoleId && customRoles[member.customRoleId]) {
-        customRole = customRoles[member.customRoleId];
-      }
       return {
         ...restUser,
         username: profile?.username ?? restUser.username,
         role: member.role,
-        customRoleId: member.customRoleId,
-        customRole,
         profile: profile,
         organizationId: profile?.organizationId ?? null,
         organization: profile?.organization,

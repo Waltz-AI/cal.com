@@ -1,55 +1,113 @@
+import * as fs from "fs";
 import { createInstance } from "i18next";
-
-import { WEBAPP_URL } from "@calcom/lib/constants";
-
-import { fetchWithTimeout } from "../fetchWithTimeout";
-import logger from "../logger";
-
-/* eslint-disable @typescript-eslint/no-var-requires */
-const { i18n } = require("@calcom/config/next-i18next.config");
+import * as path from "path";
 
 const translationCache = new Map<string, Record<string, string>>();
 const i18nInstanceCache = new Map<string, any>();
-const SUPPORTED_NAMESPACES = ["common"];
 
 /**
- * Loads translations for a specific locale and namespace with optimized caching
+ * Gets the path to translation files
+ * @returns {string} Path to the locales directory
+ */
+function getLocalesPath(): string {
+  // Try to find the locales directory relative to the current file
+  const possiblePaths = [
+    // For v2 API running from apps/api/v2
+    path.resolve(process.cwd(), "../../apps/web/public/static/locales"),
+    // For web app running from apps/web
+    path.resolve(process.cwd(), "public/static/locales"),
+    // For packages running from packages/lib
+    path.resolve(process.cwd(), "../../apps/web/public/static/locales"),
+    // For packages running from packages/platform
+    path.resolve(process.cwd(), "../../../apps/web/public/static/locales"),
+    // Fallback to a common path
+    path.resolve(process.cwd(), "apps/web/public/static/locales"),
+    // For Docker or different working directories
+    path.resolve(process.cwd(), "public/static/locales"),
+    path.resolve(process.cwd(), "static/locales"),
+  ];
+
+  for (const localesPath of possiblePaths) {
+    if (fs.existsSync(localesPath)) {
+      console.log(`Found locales directory at: ${localesPath}`);
+      return localesPath;
+    }
+  }
+
+  // If no path found, return the default web app path
+  const defaultPath = path.resolve(process.cwd(), "apps/web/public/static/locales");
+  console.warn(`No locales directory found, using default path: ${defaultPath}`);
+  return defaultPath;
+}
+
+/**
+ * Loads English fallback translations from file system
+ * @returns {Promise<Record<string, string>>} English translations object or empty object on failure
+ */
+async function loadFallbackTranslations(): Promise<Record<string, string>> {
+  const cacheKey = "en-common";
+
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey) || {};
+  }
+
+  try {
+    const localesPath = getLocalesPath();
+    const fallbackPath = path.join(localesPath, "en", "common.json");
+
+    if (!fs.existsSync(fallbackPath)) {
+      console.warn(`Fallback translation file not found at: ${fallbackPath}`);
+      console.warn(`Available paths checked: ${getLocalesPath()}`);
+      return {};
+    }
+
+    const fileContent = fs.readFileSync(fallbackPath, "utf-8");
+    const translations = JSON.parse(fileContent);
+    translationCache.set(cacheKey, translations);
+    console.log(`Loaded fallback translations from: ${fallbackPath}`);
+    return translations;
+  } catch (error) {
+    console.error("Could not load fallback translations from file system:", error);
+    return {};
+  }
+}
+
+/**
+ * Loads translations for a specific locale and namespace from file system with optimized caching
  * @param {string} _locale - The locale code (e.g., 'en', 'fr', 'zh')
  * @param {string} ns - The namespace for the translations
  * @returns {Promise<Record<string, string>>} Translations object or fallback translations on failure
  */
-export async function loadTranslations(_locale: string, _ns: string) {
-  let locale = _locale === "zh" ? "zh-CN" : _locale;
-  locale = i18n.locales.includes(locale) ? locale : "en";
-  const ns = SUPPORTED_NAMESPACES.includes(_ns) ? _ns : "common";
+export async function loadTranslations(_locale: string, ns: string): Promise<Record<string, string>> {
+  const locale = _locale === "zh" ? "zh-CN" : _locale;
   const cacheKey = `${locale}-${ns}`;
 
   if (translationCache.has(cacheKey)) {
-    return translationCache.get(cacheKey);
+    return translationCache.get(cacheKey) || {};
   }
 
-  const url = `${WEBAPP_URL}/static/locales/${locale}/${ns}.json`;
   try {
-    const response = await fetchWithTimeout(
-      url,
-      {
-        cache: process.env.NODE_ENV === "production" ? "force-cache" : "no-store",
-      },
-      process.env.NODE_ENV === "development" ? 30000 : 3000
-    );
+    const localesPath = getLocalesPath();
+    const translationPath = path.join(localesPath, locale, `${ns}.json`);
 
-    if (!response.ok) {
-      logger.error(`Failed to fetch translations: ${response.status}`);
-      return {};
+    if (!fs.existsSync(translationPath)) {
+      console.warn(`Translation file not found at: ${translationPath}, falling back to English`);
+      const fallbackTranslations = await loadFallbackTranslations();
+      return fallbackTranslations;
     }
 
-    const translations = await response.json();
+    const fileContent = fs.readFileSync(translationPath, "utf-8");
+    const translations = JSON.parse(fileContent);
     translationCache.set(cacheKey, translations);
+    console.log(`Loaded translations for ${locale}/${ns} from: ${translationPath}`);
     return translations;
-  } catch (err) {
-    console.error("loadTranslations Error:", err);
-
-    return {};
+  } catch (error) {
+    console.warn(
+      `Failed to load translations for ${locale}/${ns} from file system, falling back to English:`,
+      error
+    );
+    const fallbackTranslations = await loadFallbackTranslations();
+    return fallbackTranslations;
   }
 }
 

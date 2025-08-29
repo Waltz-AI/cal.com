@@ -14,7 +14,7 @@ import {
 } from "@calcom/ui/components/dropdown";
 import { showToast, showProgressToast, hideProgressToast } from "@calcom/ui/components/toast";
 
-import { useInsightsBookingParameters } from "../../hooks/useInsightsBookingParameters";
+import { useInsightsParameters } from "../../hooks/useInsightsParameters";
 
 type RawData = RouterOutputs["viewer"]["insights"]["rawData"]["data"][number];
 
@@ -22,8 +22,7 @@ const BATCH_SIZE = 100;
 
 const Download = () => {
   const { t } = useLocale();
-  const insightsBookingParams = useInsightsBookingParameters();
-  const { startDate, endDate } = insightsBookingParams;
+  const { startDate, endDate, teamId, userId, eventTypeId, memberUserId, isAll } = useInsightsParameters();
   const [isDownloading, setIsDownloading] = useState(false);
   const utils = trpc.useUtils();
 
@@ -35,7 +34,13 @@ const Download = () => {
   const fetchBatch = async (offset: number): Promise<PaginatedResponse | null> => {
     try {
       const result = await utils.viewer.insights.rawData.fetch({
-        ...insightsBookingParams,
+        startDate,
+        endDate,
+        teamId,
+        userId,
+        eventTypeId,
+        memberUserId,
+        isAll,
         limit: BATCH_SIZE,
         offset,
       });

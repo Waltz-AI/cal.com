@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 
 export async function revalidateApiKeysList() {
-  revalidateTag("viewer.apiKeys.list");
+  revalidatePath("/settings/developer/api-keys");
 }

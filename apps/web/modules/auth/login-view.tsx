@@ -25,6 +25,7 @@ import { Button } from "@calcom/ui/components/button";
 import { EmailField, PasswordField } from "@calcom/ui/components/form";
 
 import type { inferSSRProps } from "@lib/types/inferSSRProps";
+import type { WithNonceProps } from "@lib/withNonce";
 
 import AddToHomescreen from "@components/AddToHomescreen";
 import BackupCode from "@components/auth/BackupCode";
@@ -52,7 +53,8 @@ export default function Login({
   samlTenantID,
   samlProductID,
   totpEmail,
-}: PageProps) {
+}: // eslint-disable-next-line @typescript-eslint/ban-types
+PageProps & WithNonceProps<{}>) {
   const searchParams = useCompatSearchParams();
   const { t } = useLocale();
   const router = useRouter();

@@ -69,7 +69,7 @@ export class OrganizationsRepository {
     return id;
   }
 
-  async findTeamIdAndSlugFromClientId(clientId: string) {
+  async findTeamIdFromClientId(clientId: string) {
     return this.dbRead.prisma.team.findFirstOrThrow({
       where: {
         platformOAuthClient: {
@@ -80,7 +80,6 @@ export class OrganizationsRepository {
       },
       select: {
         id: true,
-        slug: true,
       },
     });
   }

@@ -1,0 +1,21 @@
+FROM node:18
+
+WORKDIR /app
+
+# Copy everything
+COPY . .
+
+# Install dependencies
+RUN yarn
+
+# Go to NestJS folder
+WORKDIR /app/apps/api/v2
+ENV NODE_OPTIONS="--max-old-space-size=8096"
+
+
+# Install dependencies specific to NestJS
+RUN yarn install
+
+EXPOSE 5555
+
+CMD ["yarn", "dev:no-docker"]

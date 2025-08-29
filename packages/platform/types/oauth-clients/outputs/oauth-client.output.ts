@@ -3,8 +3,6 @@ import { IsArray, IsEnum, IsString, IsNumber, IsOptional, IsDate, IsBoolean, IsU
 
 import { PERMISSION_MAP } from "@calcom/platform-constants";
 
-import { ARE_CALENDAR_EVENTS_ENABLED_DOCS } from "../inputs";
-
 export class PlatformOAuthClientDto {
   @ApiProperty({ example: "clsx38nbl0001vkhlwin9fmt0" })
   @IsString()
@@ -57,10 +55,6 @@ export class PlatformOAuthClientDto {
       "If enabled, when creating a managed user the managed user will have 4 default event types: 30 and 60 minutes without Cal video, 30 and 60 minutes with Cal video. Leave this disabled if you want to create a managed user and then manually create event types for the user.",
   })
   areDefaultEventTypesEnabled!: boolean;
-
-  @IsBoolean()
-  @ApiProperty({ example: true, description: ARE_CALENDAR_EVENTS_ENABLED_DOCS })
-  areCalendarEventsEnabled!: boolean;
 
   @ApiPropertyOptional({ example: "https://example.com/booking-redirect" })
   @IsOptional()

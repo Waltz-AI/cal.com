@@ -19,7 +19,7 @@ export default async function isAuthorized(token: string, requiredScopes: string
   }
 
   if (decodedToken.userId) {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: {
         id: decodedToken.userId,
       },
@@ -35,7 +35,7 @@ export default async function isAuthorized(token: string, requiredScopes: string
   }
 
   if (decodedToken.teamId) {
-    const team = await prisma.team.findUnique({
+    const team = await prisma.team.findFirst({
       where: {
         id: decodedToken.teamId,
       },

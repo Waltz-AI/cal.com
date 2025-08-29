@@ -1,20 +1,19 @@
 import type { Dayjs } from "@calcom/dayjs";
 import dayjs from "@calcom/dayjs";
-import { getCheckBookingLimitsService } from "@calcom/lib/di/containers/booking-limits";
 import { getStartEndDateforLimitCheck } from "@calcom/lib/getBusyTimes";
 import type { EventType } from "@calcom/lib/getUserAvailability";
-import { getPeriodStartDatesBetween } from "@calcom/lib/intervalLimits/utils/getPeriodStartDatesBetween";
+import { getPeriodStartDatesBetween } from "@calcom/lib/getUserAvailability";
 import { withReporting } from "@calcom/lib/sentryWrapper";
 import { performance } from "@calcom/lib/server/perfObserver";
 import { getTotalBookingDuration } from "@calcom/lib/server/queries/booking";
 import { BookingRepository } from "@calcom/lib/server/repository/booking";
-import prisma from "@calcom/prisma";
 import type { EventBusyDetails } from "@calcom/types/Calendar";
 
 import { descendingLimitKeys, intervalLimitKeyToUnit } from "../intervalLimit";
 import type { IntervalLimit } from "../intervalLimitSchema";
 import LimitManager from "../limitManager";
 import { isBookingWithinPeriod } from "../utils";
+import { checkBookingLimit } from "./checkBookingLimits";
 
 const _getBusyTimesFromLimits = async (
   bookingLimits: IntervalLimit | null,
@@ -113,8 +112,7 @@ const _getBusyTimesFromBookingLimits = async (params: {
       // special handling of yearly limits to improve performance
       if (unit === "year") {
         try {
-          const checkBookingLimitsService = getCheckBookingLimitsService();
-          await checkBookingLimitsService.checkBookingLimit({
+          await checkBookingLimit({
             eventStartDate: periodStart.toDate(),
             limitingNumber: limit,
             eventId: eventTypeId,
@@ -235,8 +233,7 @@ const _getBusyTimesFromTeamLimits = async (
     bookingLimits
   );
 
-  const bookingRepo = new BookingRepository(prisma);
-  const bookings = await bookingRepo.getAllAcceptedTeamBookingsOfUser({
+  const bookings = await BookingRepository.getAllAcceptedTeamBookingsOfUser({
     user,
     teamId,
     startDate: limitDateFrom.toDate(),

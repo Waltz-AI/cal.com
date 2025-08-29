@@ -22,6 +22,7 @@ export interface IUseBookingForm {
     guests: string[];
     name: string | null;
   };
+  lastBookingResponse?: Record<string, string>;
   clientId?: string;
 }
 
@@ -35,6 +36,7 @@ export const useBookingForm = ({
   hasSession,
   extraOptions,
   prefillFormParams,
+  lastBookingResponse,
   clientId,
 }: IUseBookingForm) => {
   const rescheduleUid = useBookerStore((state) => state.rescheduleUid);
@@ -74,6 +76,7 @@ export const useBookingForm = ({
     hasSession,
     extraOptions,
     prefillFormParams,
+    lastBookingResponse,
     clientId,
   });
 

@@ -46,10 +46,11 @@ export class SchedulesController_2024_04_15 {
     @Body() bodySchedule: CreateScheduleInput_2024_04_15
   ): Promise<CreateScheduleOutput_2024_04_15> {
     const schedule = await this.schedulesService.createUserSchedule(user.id, bodySchedule);
+    const scheduleFormatted = await this.schedulesService.formatScheduleForAtom(user, schedule);
 
     return {
       status: SUCCESS_STATUS,
-      data: schedule,
+      data: scheduleFormatted,
     };
   }
 
@@ -59,10 +60,13 @@ export class SchedulesController_2024_04_15 {
     @GetUser() user: UserWithProfile
   ): Promise<GetDefaultScheduleOutput_2024_04_15 | null> {
     const schedule = await this.schedulesService.getUserScheduleDefault(user.id);
+    const scheduleFormatted = schedule
+      ? await this.schedulesService.formatScheduleForAtom(user, schedule)
+      : null;
 
     return {
       status: SUCCESS_STATUS,
-      data: schedule,
+      data: scheduleFormatted,
     };
   }
 
@@ -73,25 +77,23 @@ export class SchedulesController_2024_04_15 {
     @Param("scheduleId") scheduleId: number
   ): Promise<GetScheduleOutput_2024_04_15> {
     const schedule = await this.schedulesService.getUserSchedule(user.id, scheduleId);
+    const scheduleFormatted = await this.schedulesService.formatScheduleForAtom(user, schedule);
 
     return {
       status: SUCCESS_STATUS,
-      data: schedule,
+      data: scheduleFormatted,
     };
   }
 
   @Get("/")
   @Permissions([SCHEDULE_READ])
   async getSchedules(@GetUser() user: UserWithProfile): Promise<GetSchedulesOutput_2024_04_15> {
-    const schedules = await this.schedulesService.getUserSchedules(
-      user.id,
-      user.timeZone,
-      user.defaultScheduleId
-    );
+    const schedules = await this.schedulesService.getUserSchedules(user.id);
+    const schedulesFormatted = await this.schedulesService.formatSchedulesForAtom(user, schedules);
 
     return {
       status: SUCCESS_STATUS,
-      data: schedules,
+      data: schedulesFormatted,
     };
   }
 

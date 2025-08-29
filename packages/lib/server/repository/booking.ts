@@ -1,11 +1,9 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import type { FormResponse } from "@calcom/app-store/routing-forms/types/types";
 import { withReporting } from "@calcom/lib/sentryWrapper";
-import type { PrismaClient } from "@calcom/prisma";
-import { bookingMinimalSelect } from "@calcom/prisma";
+import prisma, { bookingMinimalSelect } from "@calcom/prisma";
 import type { Booking } from "@calcom/prisma/client";
-import { RRTimestampBasis } from "@calcom/prisma/enums";
 import { BookingStatus } from "@calcom/prisma/enums";
 
 import { UserRepository } from "./user";
@@ -49,7 +47,6 @@ const buildWhereClauseForActiveBookings = ({
   users,
   virtualQueuesData,
   includeNoShowInRRCalculation = false,
-  rrTimestampBasis,
 }: {
   eventTypeId: number;
   startDate?: Date;
@@ -63,7 +60,6 @@ const buildWhereClauseForActiveBookings = ({
     };
   } | null;
   includeNoShowInRRCalculation: boolean;
-  rrTimestampBasis: RRTimestampBasis;
 }): Prisma.BookingWhereInput => ({
   OR: [
     {
@@ -90,19 +86,12 @@ const buildWhereClauseForActiveBookings = ({
   status: BookingStatus.ACCEPTED,
   eventTypeId,
   ...(startDate || endDate
-    ? rrTimestampBasis === RRTimestampBasis.CREATED_AT
-      ? {
-          createdAt: {
-            ...(startDate ? { gte: startDate } : {}),
-            ...(endDate ? { lte: endDate } : {}),
-          },
-        }
-      : {
-          startTime: {
-            ...(startDate ? { gte: startDate } : {}),
-            ...(endDate ? { lte: endDate } : {}),
-          },
-        }
+    ? {
+        createdAt: {
+          ...(startDate ? { gte: startDate } : {}),
+          ...(endDate ? { lte: endDate } : {}),
+        },
+      }
     : {}),
   ...(virtualQueuesData
     ? {
@@ -114,10 +103,8 @@ const buildWhereClauseForActiveBookings = ({
 });
 
 export class BookingRepository {
-  constructor(private prismaClient: PrismaClient) {}
-
-  async getBookingAttendees(bookingId: number) {
-    return await this.prismaClient.attendee.findMany({
+  static async getBookingAttendees(bookingId: number) {
+    return await prisma.attendee.findMany({
       where: {
         bookingId,
       },
@@ -125,8 +112,8 @@ export class BookingRepository {
   }
 
   /** Determines if the user is the organizer, team admin, or org admin that the booking was created under */
-  async doesUserIdHaveAccessToBooking({ userId, bookingId }: { userId: number; bookingId: number }) {
-    const booking = await this.prismaClient.booking.findUnique({
+  static async doesUserIdHaveAccessToBooking({ userId, bookingId }: { userId: number; bookingId: number }) {
+    const booking = await prisma.booking.findFirst({
       where: {
         id: bookingId,
       },
@@ -148,8 +135,7 @@ export class BookingRepository {
     if (!booking.eventType || !booking.eventType.teamId) return false;
 
     // TODO add checks for team and org
-    const userRepo = new UserRepository(this.prismaClient);
-    const isAdminOrUser = await userRepo.isAdminOfTeamOrParentOrg({
+    const isAdminOrUser = await UserRepository.isAdminOfTeamOrParentOrg({
       userId,
       teamId: booking.eventType.teamId,
     });
@@ -157,8 +143,8 @@ export class BookingRepository {
     return isAdminOrUser;
   }
 
-  async findFirstBookingByReschedule({ originalBookingUid }: { originalBookingUid: string }) {
-    return await this.prismaClient.booking.findFirst({
+  static async findFirstBookingByReschedule({ originalBookingUid }: { originalBookingUid: string }) {
+    return await prisma.booking.findFirst({
       where: {
         fromReschedule: originalBookingUid,
       },
@@ -168,8 +154,8 @@ export class BookingRepository {
     });
   }
 
-  async findReschedulerByUid({ uid }: { uid: string }) {
-    return await this.prismaClient.booking.findUnique({
+  static async findReschedulerByUid({ uid }: { uid: string }) {
+    return await prisma.booking.findFirst({
       where: {
         uid,
       },
@@ -180,7 +166,7 @@ export class BookingRepository {
     });
   }
 
-  private async _findAllExistingBookingsForEventTypeBetween({
+  private static async _findAllExistingBookingsForEventTypeBetween({
     eventTypeId,
     seatedEvent = false,
     startDate,
@@ -201,7 +187,7 @@ export class BookingRepository {
       },
     };
 
-    const bookingsSelect = {
+    const bookingsSelect = Prisma.validator<Prisma.BookingSelect>()({
       id: true,
       uid: true,
       userId: true,
@@ -229,9 +215,9 @@ export class BookingRepository {
           },
         },
       }),
-    } satisfies Prisma.BookingSelect;
+    });
 
-    const currentBookingsAllUsersQueryOne = this.prismaClient.booking.findMany({
+    const currentBookingsAllUsersQueryOne = prisma.booking.findMany({
       where: {
         ...sharedQuery,
         userId: {
@@ -241,7 +227,7 @@ export class BookingRepository {
       select: bookingsSelect,
     });
 
-    const currentBookingsAllUsersQueryTwo = this.prismaClient.booking.findMany({
+    const currentBookingsAllUsersQueryTwo = prisma.booking.findMany({
       where: {
         ...sharedQuery,
         attendees: {
@@ -256,7 +242,7 @@ export class BookingRepository {
     });
 
     const currentBookingsAllUsersQueryThree = eventTypeId
-      ? this.prismaClient.booking.findMany({
+      ? prisma.booking.findMany({
           where: {
             startTime: { lte: endDate },
             endTime: { gte: startDate },
@@ -292,19 +278,18 @@ export class BookingRepository {
     return [...resultOne, ...resultTwoWithOrganizersRemoved, ...resultThree];
   }
 
-  findAllExistingBookingsForEventTypeBetween = withReporting(
-    this._findAllExistingBookingsForEventTypeBetween.bind(this),
+  static findAllExistingBookingsForEventTypeBetween = withReporting(
+    BookingRepository._findAllExistingBookingsForEventTypeBetween,
     "findAllExistingBookingsForEventTypeBetween"
   );
 
-  async getAllBookingsForRoundRobin({
+  static async getAllBookingsForRoundRobin({
     users,
     eventTypeId,
     startDate,
     endDate,
     virtualQueuesData,
     includeNoShowInRRCalculation,
-    rrTimestampBasis,
   }: {
     users: { id: number; email: string }[];
     eventTypeId: number;
@@ -318,9 +303,8 @@ export class BookingRepository {
       };
     } | null;
     includeNoShowInRRCalculation: boolean;
-    rrTimestampBasis: RRTimestampBasis;
   }) {
-    const allBookings = await this.prismaClient.booking.findMany({
+    const allBookings = await prisma.booking.findMany({
       where: buildWhereClauseForActiveBookings({
         eventTypeId,
         startDate,
@@ -328,7 +312,6 @@ export class BookingRepository {
         users,
         virtualQueuesData,
         includeNoShowInRRCalculation,
-        rrTimestampBasis,
       }),
       select: {
         id: true,
@@ -370,8 +353,8 @@ export class BookingRepository {
     return queueBookings;
   }
 
-  async findBookingByUid({ bookingUid }: { bookingUid: string }) {
-    return await this.prismaClient.booking.findUnique({
+  static async findBookingByUid({ bookingUid }: { bookingUid: string }) {
+    return await prisma.booking.findUnique({
       where: {
         uid: bookingUid,
       },
@@ -379,8 +362,8 @@ export class BookingRepository {
     });
   }
 
-  async findBookingForMeetingPage({ bookingUid }: { bookingUid: string }) {
-    return await this.prismaClient.booking.findUnique({
+  static async findBookingForMeetingPage({ bookingUid }: { bookingUid: string }) {
+    return await prisma.booking.findUnique({
       where: {
         uid: bookingUid,
       },
@@ -391,19 +374,7 @@ export class BookingRepository {
         isRecorded: true,
         eventType: {
           select: {
-            id: true,
             hideOrganizerEmail: true,
-            calVideoSettings: {
-              select: {
-                disableRecordingForGuests: true,
-                disableRecordingForOrganizer: true,
-                enableAutomaticTranscription: true,
-                enableAutomaticRecordingForOrganizer: true,
-                disableTranscriptionForGuests: true,
-                disableTranscriptionForOrganizer: true,
-                redirectUrlOnExit: true,
-              },
-            },
           },
         },
         user: {
@@ -435,8 +406,8 @@ export class BookingRepository {
     });
   }
 
-  async findBookingForMeetingEndedPage({ bookingUid }: { bookingUid: string }) {
-    return await this.prismaClient.booking.findUnique({
+  static async findBookingForMeetingEndedPage({ bookingUid }: { bookingUid: string }) {
+    return await prisma.booking.findUnique({
       where: {
         uid: bookingUid,
       },
@@ -459,8 +430,8 @@ export class BookingRepository {
     });
   }
 
-  async findBookingByUidAndUserId({ bookingUid, userId }: { bookingUid: string; userId: number }) {
-    return await this.prismaClient.booking.findFirst({
+  static async findBookingByUidAndUserId({ bookingUid, userId }: { bookingUid: string; userId: number }) {
+    return await prisma.booking.findFirst({
       where: {
         uid: bookingUid,
         OR: [
@@ -520,28 +491,24 @@ export class BookingRepository {
     });
   }
 
-  async updateLocationById({
+  static async updateLocationById({
     where: { id },
-    data: { location, metadata, referencesToCreate, responses, iCalSequence },
+    data: { location, metadata, referencesToCreate },
   }: {
     where: { id: number };
     data: {
       location: string;
       metadata: Record<string, unknown>;
       referencesToCreate: Prisma.BookingReferenceCreateInput[];
-      responses?: Record<string, unknown>;
-      iCalSequence?: number;
     };
   }) {
-    await this.prismaClient.booking.update({
+    await prisma.booking.update({
       where: {
         id,
       },
       data: {
         location,
         metadata,
-        ...(responses && { responses }),
-        ...(iCalSequence !== undefined && { iCalSequence }),
         references: {
           create: referencesToCreate,
         },
@@ -549,11 +516,13 @@ export class BookingRepository {
     });
   }
 
-  async getAllAcceptedTeamBookingsOfUser(params: TeamBookingsParamsWithCount): Promise<number>;
+  static async getAllAcceptedTeamBookingsOfUser(params: TeamBookingsParamsWithCount): Promise<number>;
 
-  async getAllAcceptedTeamBookingsOfUser(params: TeamBookingsParamsWithoutCount): Promise<Array<Booking>>;
+  static async getAllAcceptedTeamBookingsOfUser(
+    params: TeamBookingsParamsWithoutCount
+  ): Promise<Array<Booking>>;
 
-  async getAllAcceptedTeamBookingsOfUser(params: TeamBookingsParamsBase) {
+  static async getAllAcceptedTeamBookingsOfUser(params: TeamBookingsParamsBase) {
     const { user, teamId, startDate, endDate, excludedUid, shouldReturnCount, includeManagedEvents } = params;
 
     const baseWhere: Prisma.BookingWhereInput = {
@@ -602,18 +571,18 @@ export class BookingRepository {
     };
 
     if (shouldReturnCount) {
-      const collectiveRoundRobinBookingsOwner = await this.prismaClient.booking.count({
+      const collectiveRoundRobinBookingsOwner = await prisma.booking.count({
         where: whereCollectiveRoundRobinOwner,
       });
 
-      const collectiveRoundRobinBookingsAttendee = await this.prismaClient.booking.count({
+      const collectiveRoundRobinBookingsAttendee = await prisma.booking.count({
         where: whereCollectiveRoundRobinBookingsAttendee,
       });
 
       let managedBookings = 0;
 
       if (includeManagedEvents) {
-        managedBookings = await this.prismaClient.booking.count({
+        managedBookings = await prisma.booking.count({
           where: whereManagedBookings,
         });
       }
@@ -623,18 +592,18 @@ export class BookingRepository {
 
       return totalNrOfBooking;
     }
-    const collectiveRoundRobinBookingsOwner = await this.prismaClient.booking.findMany({
+    const collectiveRoundRobinBookingsOwner = await prisma.booking.findMany({
       where: whereCollectiveRoundRobinOwner,
     });
 
-    const collectiveRoundRobinBookingsAttendee = await this.prismaClient.booking.findMany({
+    const collectiveRoundRobinBookingsAttendee = await prisma.booking.findMany({
       where: whereCollectiveRoundRobinBookingsAttendee,
     });
 
     let managedBookings: typeof collectiveRoundRobinBookingsAttendee = [];
 
     if (includeManagedEvents) {
-      managedBookings = await this.prismaClient.booking.findMany({
+      managedBookings = await prisma.booking.findMany({
         where: whereManagedBookings,
       });
     }
@@ -646,8 +615,8 @@ export class BookingRepository {
     ];
   }
 
-  async findOriginalRescheduledBooking(uid: string, seatsEventType?: boolean) {
-    return await this.prismaClient.booking.findFirst({
+  static async findOriginalRescheduledBooking(uid: string, seatsEventType?: boolean) {
+    return await prisma.booking.findFirst({
       where: {
         uid: uid,
         status: {
@@ -699,13 +668,15 @@ export class BookingRepository {
     });
   }
 
-  async getAllAcceptedTeamBookingsOfUsers(params: TeamBookingsMultipleUsersParamsWithCount): Promise<number>;
+  static async getAllAcceptedTeamBookingsOfUsers(
+    params: TeamBookingsMultipleUsersParamsWithCount
+  ): Promise<number>;
 
-  async getAllAcceptedTeamBookingsOfUsers(
+  static async getAllAcceptedTeamBookingsOfUsers(
     params: TeamBookingsMultipleUsersParamsWithoutCount
   ): Promise<Array<Booking>>;
 
-  async getAllAcceptedTeamBookingsOfUsers(params: TeamBookingsMultipleUsersParamsBase) {
+  static async getAllAcceptedTeamBookingsOfUsers(params: TeamBookingsMultipleUsersParamsBase) {
     const { users, teamId, startDate, endDate, excludedUid, shouldReturnCount, includeManagedEvents } =
       params;
 
@@ -764,18 +735,18 @@ export class BookingRepository {
     };
 
     if (shouldReturnCount) {
-      const collectiveRoundRobinBookingsOwner = await this.prismaClient.booking.count({
+      const collectiveRoundRobinBookingsOwner = await prisma.booking.count({
         where: whereCollectiveRoundRobinOwner,
       });
 
-      const collectiveRoundRobinBookingsAttendee = await this.prismaClient.booking.count({
+      const collectiveRoundRobinBookingsAttendee = await prisma.booking.count({
         where: whereCollectiveRoundRobinBookingsAttendee,
       });
 
       let managedBookings = 0;
 
       if (includeManagedEvents) {
-        managedBookings = await this.prismaClient.booking.count({
+        managedBookings = await prisma.booking.count({
           where: whereManagedBookings,
         });
       }
@@ -786,18 +757,18 @@ export class BookingRepository {
       return totalNrOfBooking;
     }
 
-    const collectiveRoundRobinBookingsOwner = await this.prismaClient.booking.findMany({
+    const collectiveRoundRobinBookingsOwner = await prisma.booking.findMany({
       where: whereCollectiveRoundRobinOwner,
     });
 
-    const collectiveRoundRobinBookingsAttendee = await this.prismaClient.booking.findMany({
+    const collectiveRoundRobinBookingsAttendee = await prisma.booking.findMany({
       where: whereCollectiveRoundRobinBookingsAttendee,
     });
 
     let managedBookings: typeof collectiveRoundRobinBookingsAttendee = [];
 
     if (includeManagedEvents) {
-      managedBookings = await this.prismaClient.booking.findMany({
+      managedBookings = await prisma.booking.findMany({
         where: whereManagedBookings,
       });
     }
@@ -807,88 +778,5 @@ export class BookingRepository {
       ...collectiveRoundRobinBookingsAttendee,
       ...managedBookings,
     ];
-  }
-
-  async getValidBookingFromEventTypeForAttendee({
-    eventTypeId,
-    bookerEmail,
-    bookerPhoneNumber,
-    startTime,
-    filterForUnconfirmed,
-  }: {
-    eventTypeId: number;
-    bookerEmail?: string;
-    bookerPhoneNumber?: string;
-    startTime: Date;
-    filterForUnconfirmed?: boolean;
-  }) {
-    return await this.prismaClient.booking.findFirst({
-      where: {
-        eventTypeId,
-        attendees: {
-          some: {
-            email: bookerEmail,
-            phoneNumber: bookerPhoneNumber,
-          },
-        },
-        startTime,
-        status: filterForUnconfirmed ? BookingStatus.PENDING : BookingStatus.ACCEPTED,
-      },
-      include: {
-        attendees: true,
-        references: true,
-        user: true,
-      },
-    });
-  }
-
-  async countBookingsByEventTypeAndDateRange({
-    eventTypeId,
-    startDate,
-    endDate,
-    excludedUid,
-  }: {
-    eventTypeId: number;
-    startDate: Date;
-    endDate: Date;
-    excludedUid?: string;
-  }) {
-    return await this.prismaClient.booking.count({
-      where: {
-        status: BookingStatus.ACCEPTED,
-        eventTypeId,
-        startTime: {
-          gte: startDate,
-        },
-        endTime: {
-          lte: endDate,
-        },
-        uid: {
-          not: excludedUid,
-        },
-      },
-    });
-  }
-
-  async findAcceptedBookingByEventTypeId({eventTypeId, dateFrom, dateTo}: {eventTypeId?: number, dateFrom: string, dateTo: string}) {
-    return  this.prismaClient.booking.findMany({
-          where: {
-            eventTypeId,
-            startTime: {
-              gte: dateFrom,
-              lte: dateTo,
-            },
-            status: BookingStatus.ACCEPTED,
-          },
-          select: {
-            uid: true,
-            startTime: true,
-            attendees: {
-              select: {
-                email: true,
-              },
-            },
-          },
-        });
   }
 }

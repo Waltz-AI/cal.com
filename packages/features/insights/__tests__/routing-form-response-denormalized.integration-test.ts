@@ -12,15 +12,14 @@ describe("RoutingFormResponseDenormalized", () => {
   let bookingId: number;
   let responseId: number;
   const randomId = Math.floor(Math.random() * 1000000);
-  const email = `routing-form-response-denorm-${randomId}@example.com`;
-  const updatedEmail = `updated-${email}`;
+  const email = `booking-denorm-${randomId}@example.com`;
 
   beforeEach(async () => {
     // Create test user
     const user = await prisma.user.create({
       data: {
         email,
-        username: `routing-form-response-denorm-testuser-${randomId}`,
+        username: `booking-denorm-testuser-${randomId}`,
         name: "Test User",
       },
     });
@@ -97,7 +96,7 @@ describe("RoutingFormResponseDenormalized", () => {
     // Create test booking
     const booking = await prisma.booking.create({
       data: {
-        uid: `routing-form-response-denorm-${randomId}`,
+        uid: `booking-denorm-${randomId}`,
         title: "Test Booking",
         startTime: new Date(),
         endTime: new Date(Date.now() + 60 * 60 * 1000),
@@ -255,7 +254,7 @@ describe("RoutingFormResponseDenormalized", () => {
         where: { id: userId },
         data: {
           name: "Updated User",
-          email: updatedEmail,
+          email: "updated@example.com",
         },
       });
 
@@ -264,7 +263,7 @@ describe("RoutingFormResponseDenormalized", () => {
       });
 
       expect(denormalizedResponse.bookingUserName).toBe("Updated User");
-      expect(denormalizedResponse.bookingUserEmail).toBe(updatedEmail);
+      expect(denormalizedResponse.bookingUserEmail).toBe("updated@example.com");
     });
 
     it("should update denormalized entry when booking is updated", async () => {
@@ -637,7 +636,7 @@ describe("RoutingFormResponseDenormalized", () => {
       // Create a booking with attendees
       const booking = await prisma.booking.create({
         data: {
-          uid: `routing-form-response-denorm-${Math.floor(Math.random() * 1000000)}`,
+          uid: `booking-denorm-${Math.floor(Math.random() * 1000000)}`,
           title: "Test Booking",
           startTime: new Date(),
           endTime: new Date(Date.now() + 60 * 60 * 1000),

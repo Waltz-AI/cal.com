@@ -2,9 +2,8 @@ import { z } from "zod";
 
 import { checkAdminOrOwner } from "@calcom/features/auth/lib/checkAdminOrOwner";
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
-import type { EventTypeRepository } from "@calcom/lib/server/repository/eventTypeRepository";
+import type { EventTypeRepository } from "@calcom/lib/server/repository/eventType";
 import { UserRepository } from "@calcom/lib/server/repository/user";
-import prisma from "@calcom/prisma";
 import { PeriodType } from "@calcom/prisma/enums";
 import type { CustomInputSchema } from "@calcom/prisma/zod-utils";
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
@@ -14,7 +13,7 @@ import { TRPCError } from "@trpc/server";
 import authedProcedure from "../../../procedures/authedProcedure";
 import type { TUpdateInputSchema } from "./types";
 
-type EventType = Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number];
+type EventType = Awaited<ReturnType<typeof EventTypeRepository.findAllByUpId>>[number];
 
 export const eventOwnerProcedure = authedProcedure
   .input(
@@ -203,7 +202,7 @@ export const mapEventType = async (eventType: EventType) => ({
   users: await Promise.all(
     (!!eventType?.hosts?.length ? eventType?.hosts.map((host) => host.user) : eventType.users).map(
       async (u) =>
-        await new UserRepository(prisma).enrichUserWithItsProfile({
+        await UserRepository.enrichUserWithItsProfile({
           user: u,
         })
     )
@@ -215,7 +214,7 @@ export const mapEventType = async (eventType: EventType) => ({
       users: await Promise.all(
         c.users.map(
           async (u) =>
-            await new UserRepository(prisma).enrichUserWithItsProfile({
+            await UserRepository.enrichUserWithItsProfile({
               user: u,
             })
         )

@@ -42,6 +42,11 @@ describe("GET /api/slots", () => {
       await handler(req, res);
 
       expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res._getData())).toMatchInlineSnapshot(`
+        {
+          "message": "invalid_type in 'startTime': Required; invalid_type in 'endTime': Required",
+        }
+      `);
     });
   });
 

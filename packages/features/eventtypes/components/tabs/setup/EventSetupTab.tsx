@@ -14,7 +14,6 @@ import type {
   SettingsToggleClassNames,
 } from "@calcom/features/eventtypes/lib/types";
 import type { FormValues, LocationFormValues } from "@calcom/features/eventtypes/lib/types";
-import { MAX_EVENT_DURATION_MINUTES, MIN_EVENT_DURATION_MINUTES } from "@calcom/lib/constants";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { md } from "@calcom/lib/markdownIt";
 import { slugify } from "@calcom/lib/slugify";
@@ -170,7 +169,6 @@ export const EventSetupTab = (
                 }}
                 disabled={!orgId}
                 tooltip={!orgId ? t("orgs_upgrade_to_enable_feature") : undefined}
-                data-testid="ai_translation_toggle"
               />
             </div>
           )}
@@ -208,12 +206,9 @@ export const EventSetupTab = (
             {...(isManagedEventType || isChildrenManagedEventType ? urlLockedProps : {})}
             defaultValue={eventType.slug}
             data-testid="event-slug"
-            containerClassName={classNames(
-              "[&>div]:gap-0",
-              customClassNames?.titleSection?.urlInput?.container
-            )}
+            containerClassName={classNames(customClassNames?.titleSection?.urlInput?.container)}
             labelClassName={classNames(customClassNames?.titleSection?.urlInput?.label)}
-            className={classNames("pl-0", customClassNames?.titleSection?.urlInput?.input)}
+            className={classNames(customClassNames?.titleSection?.urlInput?.input)}
             addOnLeading={
               isPlatform ? undefined : (
                 <>
@@ -342,20 +337,9 @@ export const EventSetupTab = (
               {...(isManagedEventType || isChildrenManagedEventType ? lengthLockedProps : {})}
               label={t("duration")}
               defaultValue={formMethods.getValues("length") ?? 15}
-              {...formMethods.register("length", {
-                valueAsNumber: true,
-                min: {
-                  value: MIN_EVENT_DURATION_MINUTES,
-                  message: t("duration_min_error", { min: MIN_EVENT_DURATION_MINUTES }),
-                },
-                max: {
-                  value: MAX_EVENT_DURATION_MINUTES,
-                  message: t("duration_max_error", { max: MAX_EVENT_DURATION_MINUTES }),
-                },
-              })}
+              {...formMethods.register("length")}
               addOnSuffix={<>{t("minutes")}</>}
-              min={MIN_EVENT_DURATION_MINUTES}
-              max={MAX_EVENT_DURATION_MINUTES}
+              min={1}
             />
           )}
           {!lengthLockedProps.disabled && (

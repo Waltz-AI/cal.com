@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsOptional, IsBoolean, IsEmail, IsArray, ArrayMinSize, ValidateNested } from "class-validator";
 
-class MarkAbsentAttendee {
+class Attendee {
   @IsEmail()
   @ApiProperty()
   email!: string;
@@ -21,8 +21,8 @@ export class MarkAbsentBookingInput_2024_08_13 {
   @ArrayMinSize(1)
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => MarkAbsentAttendee)
+  @Type(() => Attendee)
   @IsOptional()
-  @ApiPropertyOptional({ type: [MarkAbsentAttendee] })
-  attendees?: MarkAbsentAttendee[];
+  @ApiPropertyOptional({ type: [Attendee] })
+  attendees?: Attendee[];
 }

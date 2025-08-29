@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -27,15 +27,9 @@ type Fields = z.infer<typeof eventTypeBookingFieldsSchema>;
 export const useEventTypeForm = ({
   eventType,
   onSubmit,
-  onFormStateChange,
 }: {
   eventType: EventTypeSetupProps["eventType"];
   onSubmit: (data: EventTypeUpdateInput) => void;
-  onFormStateChange?: (formState: {
-    isDirty: boolean;
-    dirtyFields: Partial<FormValues>;
-    values: FormValues;
-  }) => void;
 }) => {
   const { t } = useLocale();
   const [periodDates] = useState<{ startDate: Date; endDate: Date }>({
@@ -59,7 +53,6 @@ export const useEventTypeForm = ({
       seatsShowAttendees: eventType.seatsShowAttendees,
       seatsShowAvailabilityCount: eventType.seatsShowAvailabilityCount,
       lockTimeZoneToggleOnBookingPage: eventType.lockTimeZoneToggleOnBookingPage,
-      lockedTimeZone: eventType.lockedTimeZone || null,
       locations: eventType.locations || [],
       destinationCalendar: eventType.destinationCalendar,
       recurringEvent: eventType.recurringEvent || null,
@@ -74,11 +67,7 @@ export const useEventTypeForm = ({
       durationLimits: eventType.durationLimits || undefined,
       length: eventType.length,
       hidden: eventType.hidden,
-      multiplePrivateLinks: eventType.hashedLink.map((link) => ({
-        link: link.link,
-        expiresAt: link.expiresAt,
-        maxUsageCount: link.maxUsageCount,
-      })),
+      multiplePrivateLinks: eventType.hashedLink.map((link) => link.link),
       eventTypeColor: eventType.eventTypeColor || null,
       periodDates: {
         startDate: periodDates.startDate,
@@ -141,9 +130,6 @@ export const useEventTypeForm = ({
       includeNoShowInRRCalculation: eventType.includeNoShowInRRCalculation,
       useEventLevelSelectedCalendars: eventType.useEventLevelSelectedCalendars,
       customReplyToEmail: eventType.customReplyToEmail || null,
-      calVideoSettings: eventType.calVideoSettings,
-      maxActiveBookingsPerBooker: eventType.maxActiveBookingsPerBooker || null,
-      maxActiveBookingPerBookerOfferReschedule: eventType.maxActiveBookingPerBookerOfferReschedule,
     };
   }, [eventType, periodDates]);
 
@@ -176,18 +162,6 @@ export const useEventTypeForm = ({
           offsetStart: z.union([z.string().transform((val) => +val), z.number()]).optional(),
           bookingFields: eventTypeBookingFieldsSchema,
           locations: locationsResolver(t),
-          calVideoSettings: z
-            .object({
-              redirectUrlOnExit: z.string().url().nullish(),
-              disableRecordingForOrganizer: z.boolean().nullable(),
-              disableRecordingForGuests: z.boolean().nullable(),
-              enableAutomaticTranscription: z.boolean().nullable(),
-              enableAutomaticRecordingForOrganizer: z.boolean().nullable(),
-              disableTranscriptionForGuests: z.boolean().nullable(),
-              disableTranscriptionForOrganizer: z.boolean().nullable(),
-            })
-            .optional()
-            .nullable(),
         })
         // TODO: Add schema for other fields later.
         .passthrough()
@@ -197,9 +171,6 @@ export const useEventTypeForm = ({
   const {
     formState: { isDirty: isFormDirty, dirtyFields },
   } = form;
-
-  // Watch all form values to trigger onFormStateChange on any change
-  const watchedValues = form.watch();
 
   const isObject = <T>(value: T): boolean => {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -415,16 +386,6 @@ export const useEventTypeForm = ({
       onSubmit({ ...filteredPayload, id: eventType.id });
     }
   };
-
-  useEffect(() => {
-    if (onFormStateChange) {
-      onFormStateChange({
-        isDirty: isFormDirty,
-        dirtyFields: dirtyFields as Partial<FormValues>,
-        values: watchedValues,
-      });
-    }
-  }, [isFormDirty, dirtyFields, watchedValues, onFormStateChange]);
 
   return { form, handleSubmit };
 };

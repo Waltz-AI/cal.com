@@ -15,12 +15,10 @@ type GetOptions = {
 const EMPTY_SCHEDULE = [[], [], [], [], [], [], []];
 
 export const getScheduleByEventSlugHandler = async ({ ctx, input }: GetOptions) => {
-  const foundScheduleForSlug = await ctx.prisma.eventType.findUnique({
+  const foundScheduleForSlug = await ctx.prisma.eventType.findFirst({
     where: {
-      userId_slug: {
-        userId: ctx.user.id,
-        slug: input.eventSlug,
-      },
+      slug: input.eventSlug,
+      userId: ctx.user.id,
     },
     select: {
       scheduleId: true,

@@ -12,23 +12,10 @@ export class SlotsRepository_2024_09_04 {
     return this.dbRead.prisma.selectedSlots.findFirst({ where: { uid } });
   }
 
-  async findActiveOverlappingBooking(eventTypeId: number, slotStartTime: Date, slotEndTime: Date) {
+  async getBookingWithAttendeesByEventTypeIdAndStart(eventTypeId: number, startTime: Date) {
     return this.dbRead.prisma.booking.findFirst({
-      where: {
-        eventTypeId,
-        startTime: {
-          // note(Lauris): booking starts before the potential slot reservation ends.
-          lt: slotEndTime,
-        },
-        endTime: {
-          // note(Lauris): booking ends after the potential slot reservation begins.
-          gt: slotStartTime,
-        },
-        status: {
-          in: ["ACCEPTED", "PENDING", "AWAITING_HOST"],
-        },
-      },
-      select: { attendees: true, status: true },
+      where: { eventTypeId, startTime },
+      select: { attendees: true },
     });
   }
 

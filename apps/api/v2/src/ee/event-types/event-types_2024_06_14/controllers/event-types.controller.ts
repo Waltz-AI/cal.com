@@ -114,9 +114,7 @@ export class EventTypesController_2024_06_14 {
     @Query() queryParams: GetEventTypesQuery_2024_06_14
   ): Promise<GetEventTypesOutput_2024_06_14> {
     const eventTypes = await this.eventTypesService.getEventTypes(queryParams);
-    if (!eventTypes || eventTypes.length === 0) {
-      throw new NotFoundException(`Event types not found`);
-    }
+
     const eventTypesFormatted = this.eventTypeResponseTransformPipe.transform(eventTypes);
     const eventTypesWithoutHiddenFields = eventTypesFormatted.map((eventType) => {
       return {

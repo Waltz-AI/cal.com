@@ -6,10 +6,9 @@ import {
 } from "@calcom/lib/constants";
 
 import { invalidateCredential } from "../invalidateCredential";
-import { getCurrentTokenObject } from "./getCurrentTokenObject";
 import { getTokenObjectFromCredential } from "./getTokenObjectFromCredential";
 import { markTokenAsExpired } from "./markTokenAsExpired";
-import { updateTokenObject, updateTokenObjectInDb } from "./updateTokenObject";
+import { updateTokenObject } from "./updateTokenObject";
 
 export const credentialSyncVariables = {
   APP_CREDENTIAL_SHARING_ENABLED: APP_CREDENTIAL_SHARING_ENABLED,
@@ -24,6 +23,4 @@ export const oAuthManagerHelper = {
   invalidateCredential: invalidateCredential,
   getTokenObjectFromCredential,
   credentialSyncVariables,
-  updateTokenObjectInDb,
-  getCurrentTokenObject,
 };

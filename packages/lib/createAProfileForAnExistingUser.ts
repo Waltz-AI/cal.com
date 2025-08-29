@@ -21,8 +21,7 @@ export const createAProfileForAnExistingUser = async ({
   };
   organizationId: number;
 }) => {
-  const teamRepo = new TeamRepository(prisma);
-  const org = await teamRepo.findById({ id: organizationId });
+  const org = await TeamRepository.findById({ id: organizationId });
   if (!org) {
     throw new Error(`Organization with id ${organizationId} not found`);
   }
@@ -48,8 +47,7 @@ export const createAProfileForAnExistingUser = async ({
     movedFromUserId: user.id,
   });
 
-  const userRepo = new UserRepository(prisma);
-  await userRepo.updateWhereId({
+  await UserRepository.updateWhereId({
     whereId: user.id,
     data: {
       movedToProfileId: profile.id,

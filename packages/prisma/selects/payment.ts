@@ -1,6 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
-export const paymentDataSelect = {
+export const paymentDataSelect = Prisma.validator<Prisma.PaymentSelect>()({
   data: true,
   success: true,
   uid: true,
@@ -49,7 +49,6 @@ export const paymentDataSelect = {
           metadata: true,
           users: {
             select: {
-              id: true,
               name: true,
               username: true,
               hideBranding: true,
@@ -60,11 +59,6 @@ export const paymentDataSelect = {
             select: {
               name: true,
               hideBranding: true,
-              parent: {
-                select: {
-                  hideBranding: true,
-                },
-              },
             },
           },
           price: true,
@@ -75,4 +69,4 @@ export const paymentDataSelect = {
       },
     },
   },
-} satisfies Prisma.PaymentSelect;
+});

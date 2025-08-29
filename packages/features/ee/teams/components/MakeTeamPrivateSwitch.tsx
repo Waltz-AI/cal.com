@@ -37,7 +37,6 @@ const MakeTeamPrivateSwitch = ({
       <SettingsToggle
         toggleSwitchAtTheEnd={true}
         title={t(isOrg ? "make_org_private" : "make_team_private")}
-        labelClassName="text-sm"
         disabled={disabled || mutation?.isPending}
         description={t(isOrg ? "make_org_private_description" : "make_team_private_description")}
         checked={isTeamPrivate}

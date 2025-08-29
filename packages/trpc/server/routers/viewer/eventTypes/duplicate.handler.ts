@@ -1,8 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { generateHashedLink } from "@calcom/lib/generateHashedLink";
-import { CalVideoSettingsRepository } from "@calcom/lib/server/repository/calVideoSettings";
-import { EventTypeRepository } from "@calcom/lib/server/repository/eventTypeRepository";
+import { EventTypeRepository } from "@calcom/lib/server/repository/eventType";
 import { prisma } from "@calcom/prisma";
 
 import { TRPCError } from "@trpc/server";
@@ -45,17 +44,6 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
         webhooks: true,
         hashedLink: true,
         destinationCalendar: true,
-        calVideoSettings: {
-          select: {
-            disableRecordingForOrganizer: true,
-            disableRecordingForGuests: true,
-            enableAutomaticTranscription: true,
-            enableAutomaticRecordingForOrganizer: true,
-            redirectUrlOnExit: true,
-            disableTranscriptionForGuests: true,
-            disableTranscriptionForOrganizer: true,
-          },
-        },
       },
     });
 
@@ -66,12 +54,10 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
     // Validate user is owner of event type or in the team
     if (eventType.userId !== ctx.user.id) {
       if (eventType.teamId) {
-        const isMember = await prisma.membership.findUnique({
+        const isMember = await prisma.membership.findFirst({
           where: {
-            userId_teamId: {
-              userId: ctx.user.id,
-              teamId: eventType.teamId,
-            },
+            userId: ctx.user.id,
+            teamId: eventType.teamId,
           },
         });
         if (!isMember) {
@@ -106,8 +92,6 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
       descriptionAsSafeHTML: _descriptionAsSafeHTML,
       secondaryEmailId,
       instantMeetingScheduleId: _instantMeetingScheduleId,
-      restrictionScheduleId: _restrictionScheduleId,
-      calVideoSettings,
       ...rest
     } = eventType;
 
@@ -127,13 +111,7 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
             },
           }
         : undefined,
-      restrictionSchedule: _restrictionScheduleId
-        ? {
-            connect: {
-              id: _restrictionScheduleId,
-            },
-          }
-        : undefined,
+
       recurringEvent: recurringEvent || undefined,
       bookingLimits: bookingLimits ?? undefined,
       durationLimits: durationLimits ?? undefined,
@@ -164,8 +142,7 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
       }
     }
 
-    const eventTypeRepo = new EventTypeRepository(prisma);
-    const newEventType = await eventTypeRepo.create(data);
+    const newEventType = await EventTypeRepository.create(data);
 
     // Create custom inputs
     if (customInputs) {
@@ -181,25 +158,14 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
         data: customInputsData,
       });
     }
-
     if (hashedLink.length > 0) {
-      const newHashedLinksData = hashedLink.map((originalLink, index) => ({
-        link: generateHashedLink(
-          `${users[0]?.id ?? newEventType.teamId ?? originalLink.eventTypeId}-${index}`
-        ),
-        eventTypeId: newEventType.id,
-        expiresAt: originalLink.expiresAt,
-        maxUsageCount: originalLink.maxUsageCount,
-      }));
-      await prisma.hashedLink.createMany({
-        data: newHashedLinksData,
-      });
-    }
-
-    if (calVideoSettings) {
-      await CalVideoSettingsRepository.createCalVideoSettings({
-        eventTypeId: newEventType.id,
-        calVideoSettings,
+      await prisma.hashedLink.create({
+        data: {
+          link: generateHashedLink(users[0]?.id ?? newEventType.teamId),
+          eventType: {
+            connect: { id: newEventType.id },
+          },
+        },
       });
     }
 

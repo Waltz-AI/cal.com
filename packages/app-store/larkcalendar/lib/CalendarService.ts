@@ -1,10 +1,9 @@
-import { getLocation } from "@calcom/lib/CalEventParser";
+import { getLocation, getRichDescription } from "@calcom/lib/CalEventParser";
 import logger from "@calcom/lib/logger";
 import prisma from "@calcom/prisma";
 import type { BufferedBusyTime } from "@calcom/types/BufferedBusyTime";
 import type {
   Calendar,
-  CalendarServiceEvent,
   CalendarEvent,
   EventBusyDate,
   IntegrationCalendar,
@@ -131,7 +130,7 @@ export default class LarkCalendarService implements Calendar {
     });
   };
 
-  async createEvent(event: CalendarServiceEvent, credentialId: number): Promise<NewCalendarEventType> {
+  async createEvent(event: CalendarEvent, credentialId: number): Promise<NewCalendarEventType> {
     let eventId = "";
     let eventRespData;
     const mainHostDestinationCalendar = event.destinationCalendar
@@ -201,7 +200,7 @@ export default class LarkCalendarService implements Calendar {
    * @param event
    * @returns
    */
-  async updateEvent(uid: string, event: CalendarServiceEvent, externalCalendarId?: string) {
+  async updateEvent(uid: string, event: CalendarEvent, externalCalendarId?: string) {
     const eventId = uid;
     let eventRespData;
     const mainHostDestinationCalendar = event.destinationCalendar?.find(
@@ -373,10 +372,10 @@ export default class LarkCalendarService implements Calendar {
     }
   };
 
-  private translateEvent = (event: CalendarServiceEvent): LarkEvent => {
+  private translateEvent = (event: CalendarEvent): LarkEvent => {
     const larkEvent: LarkEvent = {
       summary: event.title,
-      description: event.calendarDescription,
+      description: getRichDescription(event),
       start_time: {
         timestamp: parseEventTime2Timestamp(event.startTime),
         timezone: event.organizer.timeZone,

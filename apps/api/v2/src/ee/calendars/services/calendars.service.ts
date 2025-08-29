@@ -14,7 +14,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { User } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { DateTime } from "luxon";
 import { z } from "zod";
 
@@ -22,7 +22,6 @@ import { APPS_TYPE_ID_MAPPING } from "@calcom/platform-constants";
 import {
   getConnectedDestinationCalendarsAndEnsureDefaultsInDb,
   getBusyCalendarTimes,
-  type EventBusyDate,
 } from "@calcom/platform-libraries";
 import { Calendar } from "@calcom/platform-types";
 import { PrismaClient } from "@calcom/prisma";
@@ -46,7 +45,6 @@ export class CalendarsService {
         ...credential,
         delegatedTo: null,
         delegatedToId: null,
-        delegationCredentialId: null,
       }))
       .filter((credential) => !!credential);
   }
@@ -83,31 +81,32 @@ export class CalendarsService {
       calendarsToLoad,
       userId
     );
-    const calendarBusyTimesQuery = await getBusyCalendarTimes(
-      this.buildNonDelegationCredentials(credentials),
-      dateFrom,
-      dateTo,
-      composedSelectedCalendars
-    );
-    if (!calendarBusyTimesQuery.success) {
+    try {
+      const calendarBusyTimes = await getBusyCalendarTimes(
+        this.buildNonDelegationCredentials(credentials),
+        dateFrom,
+        dateTo,
+        composedSelectedCalendars
+      );
+      const calendarBusyTimesConverted = calendarBusyTimes.map(
+        (busyTime: { start: string | number | Date; end: string | number | Date }) => {
+          const busyTimeStart = DateTime.fromJSDate(new Date(busyTime.start)).setZone(timezone);
+          const busyTimeEnd = DateTime.fromJSDate(new Date(busyTime.end)).setZone(timezone);
+          const busyTimeStartDate = busyTimeStart.toJSDate();
+          const busyTimeEndDate = busyTimeEnd.toJSDate();
+          return {
+            ...busyTime,
+            start: busyTimeStartDate,
+            end: busyTimeEndDate,
+          };
+        }
+      );
+      return calendarBusyTimesConverted;
+    } catch (error) {
       throw new InternalServerErrorException(
         "Unable to fetch connected calendars events. Please try again later."
       );
     }
-    const calendarBusyTimesConverted = calendarBusyTimesQuery.data.map(
-      (busyTime: EventBusyDate & { timeZone?: string }) => {
-        const busyTimeStart = DateTime.fromJSDate(new Date(busyTime.start)).setZone(timezone);
-        const busyTimeEnd = DateTime.fromJSDate(new Date(busyTime.end)).setZone(timezone);
-        const busyTimeStartDate = busyTimeStart.toJSDate();
-        const busyTimeEndDate = busyTimeEnd.toJSDate();
-        return {
-          ...busyTime,
-          start: busyTimeStartDate,
-          end: busyTimeEndDate,
-        };
-      }
-    );
-    return calendarBusyTimesConverted;
   }
 
   async getUniqCalendarCredentials(calendarsToLoad: Calendar[], userId: User["id"]) {

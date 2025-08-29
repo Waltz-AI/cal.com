@@ -105,7 +105,7 @@ export class OrganizationPaymentService {
 
     const stripeCustomerId = customer.stripeCustomerId;
     if (existingCustomer && parsedMetadata) {
-      await new UserRepository(prisma).updateStripeCustomerId({
+      await UserRepository.updateStripeCustomerId({
         id: existingCustomer.id,
         stripeCustomerId,
         existingMetadata: parsedMetadata,

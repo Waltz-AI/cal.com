@@ -58,17 +58,13 @@ export function getPiiFreeBooking(booking: {
   };
 }
 
-export function getPiiFreeCredential(credential: Partial<Credential> & { delegatedTo?: unknown }) {
+export function getPiiFreeCredential(credential: Partial<Credential>) {
   /**
    * Let's just get a boolean value for PII sensitive fields so that we atleast know if it's present or not
    */
   const booleanKeyStatus = getBooleanStatus(credential?.key);
 
-  return {
-    ...credential,
-    key: booleanKeyStatus,
-    delegatedTo: !!credential.delegatedTo,
-  };
+  return { ...credential, key: booleanKeyStatus };
 }
 
 export function getPiiFreeSelectedCalendar(selectedCalendar: Partial<SelectedCalendar>) {

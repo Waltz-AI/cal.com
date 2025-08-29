@@ -5,55 +5,109 @@ import { InputBookingsService_2024_08_13 } from "@/ee/bookings/2024-08-13/servic
 import { OutputBookingsService_2024_08_13 } from "@/ee/bookings/2024-08-13/services/output.service";
 import { PlatformBookingsService } from "@/ee/bookings/shared/platform-bookings.service";
 import { EventTypesRepository_2024_06_14 } from "@/ee/event-types/event-types_2024_06_14/event-types.repository";
-import { getPagination } from "@/lib/pagination/pagination";
+import { AppsRepository } from "@/modules/apps/apps.repository";
 import { BillingService } from "@/modules/billing/services/billing.service";
 import { BookingSeatRepository } from "@/modules/booking-seat/booking-seat.repository";
+import { CredentialsRepository } from "@/modules/credentials/credentials.repository";
 import { KyselyReadService } from "@/modules/kysely/kysely-read.service";
 import { OAuthClientRepository } from "@/modules/oauth-clients/oauth-client.repository";
 import { OAuthClientUsersService } from "@/modules/oauth-clients/services/oauth-clients-users.service";
 import { OrganizationsRepository } from "@/modules/organizations/index/organizations.repository";
 import { OrganizationsTeamsRepository } from "@/modules/organizations/teams/index/organizations-teams.repository";
 import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
+import { PrismaWriteService } from "@/modules/prisma/prisma-write.service";
 import { TeamsEventTypesRepository } from "@/modules/teams/event-types/teams-event-types.repository";
 import { TeamsRepository } from "@/modules/teams/teams/teams.repository";
 import { UsersService } from "@/modules/users/services/users.service";
 import { UsersRepository, UserWithProfile } from "@/modules/users/users.repository";
-import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { BadRequestException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { Request } from "express";
+import type { TFunction } from "i18next";
 import { DateTime } from "luxon";
 import { z } from "zod";
 
 import {
-  handleNewRecurringBooking,
-  getTranslation,
-  getAllUserBookings,
-  handleInstantMeeting,
-  handleCancelBooking,
-  roundRobinReassignment,
-  roundRobinManualReassignment,
-  handleMarkNoShow,
   confirmBookingHandler,
+  getAllUserBookings,
   getCalendarLinks,
+  getTranslation,
+  handleCancelBooking,
+  handleInstantMeeting,
+  handleMarkNoShow,
+  handleNewBooking,
+  handleNewRecurringBooking,
+  parseRecurringEvent,
+  roundRobinManualReassignment,
+  roundRobinReassignment,
 } from "@calcom/platform-libraries";
-import { handleNewBooking } from "@calcom/platform-libraries";
 import {
-  CreateBookingInput_2024_08_13,
+  _buildDelegatedCalendarCredential,
+  _buildDelegatedConferencingCredential,
+  buildAllCredentials,
+  CredentialPayload,
+  deleteMeeting,
+  getCalendar,
+  getCalEventResponses,
+  getDelegationCredentialOrRegularCredential,
+  isPrismaObjOrUndefined,
+  sendPayload,
+} from "@calcom/platform-libraries/app-store";
+import {
+  sendLocationChangeEmailsAndSMS,
+  sendAddGuestsEmails,
+  sendRequestRescheduleEmailAndSMS,
+} from "@calcom/platform-libraries/emails";
+import {
+  BookingOutput_2024_08_13,
+  CancelBookingInput,
   CreateBookingInput,
-  CreateRecurringBookingInput_2024_08_13,
-  GetBookingsInput_2024_08_13,
+  CreateBookingInput_2024_08_13,
   CreateInstantBookingInput_2024_08_13,
+  CreateRecurringBookingInput_2024_08_13,
+  EditLocationInput,
+  GetBookingsInput_2024_08_13,
+  GetRecurringSeatedBookingOutput_2024_08_13,
+  GetSeatedBookingOutput_2024_08_13,
   MarkAbsentBookingInput_2024_08_13,
   ReassignToUserBookingInput_2024_08_13,
-  BookingOutput_2024_08_13,
   RecurringBookingOutput_2024_08_13,
-  GetSeatedBookingOutput_2024_08_13,
-  GetRecurringSeatedBookingOutput_2024_08_13,
+  RequestRescheduleInput,
   RescheduleBookingInput,
-  CancelBookingInput,
 } from "@calcom/platform-types";
 import { PrismaClient } from "@calcom/prisma";
-import { EventType, User, Team } from "@calcom/prisma/client";
+import {
+  BookingReference,
+  EventType,
+  Booking as PrismaBooking,
+  Team,
+  User,
+  WebhookTriggerEvents,
+} from "@calcom/prisma/client";
+import { EventTypeMetadata } from "@calcom/prisma/zod-utils";
+import { CalendarEvent, Person } from "@calcom/types/Calendar";
+import { PartialReference } from "@calcom/types/EventManager";
+import { Ensure } from "@calcom/types/utils";
+
+import { CalendarEventBuilder } from "../helpers/CalendarEvent/builder";
+import { CalendarEventDirector } from "../helpers/CalendarEvent/director";
+import EventManager from "../helpers/EventManager";
+import {
+  Booking,
+  buildCalEventFromBooking,
+  extractAdditionalInformation,
+  getLocationInEvtFormatOrThrow,
+  getVideoCallUrlFromCalEvent,
+  UserMetadata,
+} from "../helpers/editLocation.helpers";
+// import { sendLocationChangeEmailsAndSMS } from "../helpers/emails";
+import { PersonAttendeeCommonFields, RequestRescheduleHelpers } from "../helpers/request-reschedule.helpers";
+import { AddGuestsInput_2024_08_13 } from "../inputs/add-guests.input";
 
 type CreatedBooking = {
   hosts: { id: number }[];
@@ -84,7 +138,11 @@ export class BookingsService_2024_08_13 {
     private readonly bookingsRepository: BookingsRepository_2024_08_13,
     private readonly bookingSeatRepository: BookingSeatRepository,
     private readonly eventTypesRepository: EventTypesRepository_2024_06_14,
+    private readonly credentialsRepository: CredentialsRepository,
+    private readonly appsRepository: AppsRepository,
+
     private readonly prismaReadService: PrismaReadService,
+    private readonly prismaWriteService: PrismaWriteService,
     private readonly kyselyReadService: KyselyReadService,
     private readonly billingService: BillingService,
     private readonly usersService: UsersService,
@@ -107,12 +165,6 @@ export class BookingsService_2024_08_13 {
       }
       if (!eventType) {
         this.errorsBookingsService.handleEventTypeToBeBookedNotFound(body);
-      }
-
-      if (eventType.schedulingType === "MANAGED") {
-        throw new BadRequestException(
-          `Event type with id=${eventType.id} is the parent managed event type that can't be booked. You have to provide the child event type id aka id of event type that has been assigned to one of the users.`
-        );
       }
 
       body.eventTypeId = eventType.id;
@@ -404,7 +456,6 @@ export class BookingsService_2024_08_13 {
       platformBookingUrl: bookingRequest.platformBookingUrl,
       platformBookingLocation: bookingRequest.platformBookingLocation,
       noEmail: bookingRequest.noEmail,
-      areCalendarEventsEnabled: bookingRequest.areCalendarEventsEnabled,
     });
     const ids = bookings.map((booking) => booking.id || 0);
     return this.outputService.getOutputRecurringBookings(ids);
@@ -425,7 +476,6 @@ export class BookingsService_2024_08_13 {
       platformCancelUrl: bookingRequest.platformCancelUrl,
       platformBookingUrl: bookingRequest.platformBookingUrl,
       platformBookingLocation: bookingRequest.platformBookingLocation,
-      areCalendarEventsEnabled: bookingRequest.areCalendarEventsEnabled,
     });
     return this.outputService.getOutputCreateRecurringSeatedBookings(
       bookings.map((booking) => ({ uid: booking.uid || "", seatUid: booking.seatReferenceUid || "" }))
@@ -447,7 +497,6 @@ export class BookingsService_2024_08_13 {
       platformCancelUrl: bookingRequest.platformCancelUrl,
       platformBookingUrl: bookingRequest.platformBookingUrl,
       platformBookingLocation: bookingRequest.platformBookingLocation,
-      areCalendarEventsEnabled: bookingRequest.areCalendarEventsEnabled,
     });
 
     if (!booking.uid) {
@@ -478,7 +527,6 @@ export class BookingsService_2024_08_13 {
         platformCancelUrl: bookingRequest.platformCancelUrl,
         platformBookingUrl: bookingRequest.platformBookingUrl,
         platformBookingLocation: bookingRequest.platformBookingLocation,
-        areCalendarEventsEnabled: bookingRequest.areCalendarEventsEnabled,
       });
 
       if (!booking.uid) {
@@ -543,17 +591,17 @@ export class BookingsService_2024_08_13 {
       queryParams.attendeeEmail = await this.getAttendeeEmail(queryParams.attendeeEmail, user);
     }
 
-    const skip = Math.abs(queryParams?.skip ?? 0);
-    const take = Math.abs(queryParams?.take ?? 100);
+    // Add support for filtering by bookingUid
+    const filters = {
+      ...this.inputService.transformGetBookingsFilters(queryParams),
+      ...(userIds?.length ? { userIds } : {}),
+    };
 
     const fetchedBookings: { bookings: { id: number }[]; totalCount: number } = await getAllUserBookings({
       bookingListingByStatus: queryParams.status || [],
-      skip,
-      take,
-      filters: {
-        ...this.inputService.transformGetBookingsFilters(queryParams),
-        ...(userIds?.length ? { userIds } : {}),
-      },
+      skip: queryParams.skip ?? 0,
+      take: queryParams.take ?? 100,
+      filters,
       ctx: {
         user,
         prisma: this.prismaReadService.prisma as unknown as PrismaClient,
@@ -596,17 +644,34 @@ export class BookingsService_2024_08_13 {
       } else if (isRecurring && isSeated) {
         formattedBookings.push(this.outputService.getOutputRecurringSeatedBooking(formatted));
       } else if (isSeated) {
-        formattedBookings.push(await this.outputService.getOutputSeatedBooking(formatted));
+        formattedBookings.push(this.outputService.getOutputSeatedBooking(formatted));
       } else {
-        formattedBookings.push(await this.outputService.getOutputBooking(formatted));
+        formattedBookings.push(this.outputService.getOutputBooking(formatted));
       }
     }
 
-    const pagination = getPagination({ skip, take, totalCount: fetchedBookings.totalCount });
-
+    const skip = Math.abs(queryParams?.skip ?? 0);
+    const take = Math.abs(queryParams?.take ?? 100);
+    const itemsPerPage = take;
+    const totalPages = itemsPerPage !== 0 ? Math.ceil(fetchedBookings.totalCount / itemsPerPage) : 0;
+    const currentPage = Math.floor(skip / itemsPerPage) + 1;
+    const hasNextPage = skip + itemsPerPage < fetchedBookings.totalCount;
+    const hasPreviousPage = skip > 0;
     return {
       bookings: formattedBookings,
-      pagination,
+      pagination: {
+        totalItems: fetchedBookings.totalCount,
+        // clamp remainingItems between 0 and totalCount
+        remainingItems: Math.min(
+          Math.max(fetchedBookings.totalCount - (skip + take), 0),
+          fetchedBookings.totalCount
+        ),
+        itemsPerPage: itemsPerPage,
+        currentPage: currentPage,
+        totalPages: totalPages,
+        hasNextPage: hasNextPage,
+        hasPreviousPage: hasPreviousPage,
+      },
     };
   }
 
@@ -641,7 +706,6 @@ export class BookingsService_2024_08_13 {
 
   async rescheduleBooking(request: Request, bookingUid: string, body: RescheduleBookingInput) {
     try {
-      await this.canRescheduleBooking(bookingUid);
       const bookingRequest = await this.inputService.createRescheduleBookingRequest(
         request,
         bookingUid,
@@ -656,7 +720,6 @@ export class BookingsService_2024_08_13 {
         platformCancelUrl: bookingRequest.platformCancelUrl,
         platformBookingUrl: bookingRequest.platformBookingUrl,
         platformBookingLocation: bookingRequest.platformBookingLocation,
-        areCalendarEventsEnabled: bookingRequest.areCalendarEventsEnabled,
       });
       if (!booking.uid) {
         throw new Error("Booking missing uid");
@@ -688,27 +751,13 @@ export class BookingsService_2024_08_13 {
       }
       return this.outputService.getOutputBooking(databaseBooking);
     } catch (error) {
-      this.errorsBookingsService.handleBookingError(error, false);
+      if (error instanceof Error) {
+        if (error.message === "no_available_users_found_error") {
+          throw new BadRequestException("User either already has booking at this time or is not available");
+        }
+      }
+      throw error;
     }
-  }
-
-  async canRescheduleBooking(bookingUid: string) {
-    const booking = await this.bookingsRepository.getByUid(bookingUid);
-    if (!booking) {
-      throw new Error(`Booking with uid=${bookingUid} was not found in the database`);
-    }
-    if (booking.status === "CANCELLED" && !booking.rescheduled) {
-      throw new BadRequestException(
-        `Can't reschedule booking with uid=${bookingUid} because it has been cancelled. Please provide uid of a booking that is not cancelled.`
-      );
-    }
-    if (booking.status === "CANCELLED" && booking.rescheduled) {
-      const rescheduledTo = await this.bookingsRepository.getByFromReschedule(bookingUid);
-      throw new BadRequestException(
-        `Can't reschedule booking with uid=${bookingUid} because it has been cancelled and rescheduled already to booking with uid=${rescheduledTo?.uid}. You probably want to reschedule ${rescheduledTo?.uid} instead by passing it within the request URL.`
-      );
-    }
-    return booking;
   }
 
   async cancelBooking(request: Request, bookingUid: string, body: CancelBookingInput) {
@@ -935,19 +984,16 @@ export class BookingsService_2024_08_13 {
       : undefined;
 
     const emailsEnabled = platformClientParams ? platformClientParams.arePlatformEmailsEnabled : true;
-    const userCalendars = await this.usersRepository.findByIdWithCalendars(requestUser.id);
 
     await confirmBookingHandler({
       ctx: {
-        user: {
-          ...requestUser,
-          destinationCalendar: userCalendars?.destinationCalendar ?? null,
-        },
+        user: requestUser,
       },
       input: {
         bookingId: booking.id,
         confirmed: true,
-        recurringEventId: booking.recurringEventId ?? undefined,
+
+        recurringEventId: booking.recurringEventId,
         emailsEnabled,
         platformClientParams,
       },
@@ -967,19 +1013,16 @@ export class BookingsService_2024_08_13 {
       : undefined;
 
     const emailsEnabled = platformClientParams ? platformClientParams.arePlatformEmailsEnabled : true;
-    const userCalendars = await this.usersRepository.findByIdWithCalendars(requestUser.id);
 
     await confirmBookingHandler({
       ctx: {
-        user: {
-          ...requestUser,
-          destinationCalendar: userCalendars?.destinationCalendar ?? null,
-        },
+        user: requestUser,
       },
       input: {
         bookingId: booking.id,
         confirmed: false,
-        recurringEventId: booking.recurringEventId ?? undefined,
+
+        recurringEventId: booking.recurringEventId,
         reason,
         emailsEnabled,
         platformClientParams,
@@ -1017,5 +1060,693 @@ export class BookingsService_2024_08_13 {
       // It can be made customizable through the API endpoint later.
       t: await getTranslation("en", "common"),
     });
+  }
+
+  async enrichUserWithDelegationCredentialsIncludeServiceAccountKey(user: {
+    id: number;
+    email: string;
+    credentials: CredentialPayload[];
+  }) {
+    const delegationCredential =
+      await this.credentialsRepository.findDelegationCredentialUniqueByOrgMemberEmailIncludeSensitiveServiceAccountKey(
+        {
+          email: user.email,
+        }
+      );
+
+    if (!delegationCredential || !delegationCredential.enabled) {
+      return null;
+    }
+
+    const delegationCredentials = [
+      _buildDelegatedCalendarCredential({ delegationCredential, user }),
+      _buildDelegatedConferencingCredential({ delegationCredential, user }),
+    ].filter((credential): credential is NonNullable<typeof credential> => credential !== null);
+
+    const { credentials, ...restUser } = user;
+    return {
+      ...restUser,
+      credentials: buildAllCredentials({
+        delegationCredentials: delegationCredentials,
+        existingCredentials: credentials,
+      }),
+    };
+  }
+
+  async getUsersCredentialsIncludeServiceAccountKey(user: { id: number; email: string }) {
+    const credentials = await this.credentialsRepository.findManyByUserId({
+      userId: user.id,
+    });
+
+    const endrichedUserResponse = await this.enrichUserWithDelegationCredentialsIncludeServiceAccountKey({
+      email: user.email,
+      id: user.id,
+      credentials,
+    });
+
+    return endrichedUserResponse?.credentials ?? [];
+  }
+
+  async getAllCredentialsIncludeServiceAccountKey({
+    user,
+    conferenceCredentialId,
+  }: {
+    user: { id: number; email: string };
+    conferenceCredentialId: number | null;
+  }) {
+    const credentials = await this.getUsersCredentialsIncludeServiceAccountKey(user);
+
+    let conferenceCredential;
+
+    if (conferenceCredentialId) {
+      conferenceCredential = await this.credentialsRepository.findFirstByIdWithKeyAndUser({
+        id: conferenceCredentialId,
+      });
+    }
+    return [...(credentials ? credentials : []), ...(conferenceCredential ? [conferenceCredential] : [])];
+  }
+
+  async updateBookingLocationInDb({
+    booking,
+    evt,
+    references,
+  }: {
+    booking: {
+      id: number;
+      metadata: PrismaBooking["metadata"];
+      responses: PrismaBooking["responses"];
+    };
+    evt: Ensure<CalendarEvent, "location">;
+    references: PartialReference[];
+  }) {
+    const bookingMetadataUpdate = {
+      videoCallUrl: getVideoCallUrlFromCalEvent(evt),
+    };
+    const referencesToCreate = references.map((reference) => {
+      const { credentialId, ...restReference } = reference;
+      return {
+        ...restReference,
+        ...(credentialId && credentialId > 0 ? { credentialId } : {}),
+      };
+    });
+
+    await this.bookingsRepository.updateBooking(booking.id, {
+      location: evt.location,
+      metadata: {
+        ...(typeof booking.metadata === "object" && booking.metadata),
+        ...bookingMetadataUpdate,
+      },
+      references: {
+        create: referencesToCreate,
+      },
+      responses: {
+        ...(typeof booking.responses === "object" && booking.responses),
+        location: {
+          value: evt.location,
+          optionValue: "",
+        },
+      },
+    });
+  }
+
+  async editLocation(bookingUid: string, editLocationInput: EditLocationInput) {
+    const { newLocation, credentialId: conferenceCredentialId } = editLocationInput;
+
+    const booking = await this.bookingsRepository.getBookingByUidWithNecessaryDetails(bookingUid);
+
+    if (!booking) {
+      throw new NotFoundException(`Booking with uid=${bookingUid} was not found in the database`);
+    }
+
+    const organizer = await this.usersRepository.findByIdOrThrow({ id: booking.userId || 0 });
+
+    const newLocationInEvtFormat = await getLocationInEvtFormatOrThrow({
+      location: newLocation,
+      organizer: {
+        name: organizer.name,
+        metadata: organizer.metadata as UserMetadata,
+      },
+    });
+
+    const evt = await buildCalEventFromBooking({
+      booking: booking as Booking,
+      organizer,
+      location: newLocationInEvtFormat,
+      conferenceCredentialId: conferenceCredentialId ?? null,
+    });
+
+    const loggedInUser = {
+      ...organizer,
+      destinationCalendar: booking.destinationCalendar,
+    };
+
+    const credentials = await this.getAllCredentialsIncludeServiceAccountKey({
+      user: loggedInUser,
+      conferenceCredentialId: conferenceCredentialId ?? null,
+    });
+
+    const calVideo = await this.appsRepository.getAppBySlug("daily-video");
+
+    const eventManager = new EventManager(
+      {
+        ...loggedInUser,
+        credentials,
+        calVideo,
+      },
+      this.prismaReadService
+    );
+
+    const updatedResult = await eventManager.updateLocation(evt, booking);
+    const results = updatedResult.results;
+    if (results.length > 0 && results.every((res) => !res.success)) {
+      throw new Error("Updating location failed");
+    }
+
+    const additionalInformation = extractAdditionalInformation(updatedResult.results[0]);
+
+    await this.updateBookingLocationInDb({
+      booking,
+      evt: { ...evt, additionalInformation },
+      references: updatedResult.referencesToCreate,
+    });
+
+    try {
+      await sendLocationChangeEmailsAndSMS(
+        { ...evt, additionalInformation },
+        booking?.eventType?.metadata as EventTypeMetadata
+      );
+    } catch (error) {
+      console.log("Error sending LocationChangeEmails", error);
+    }
+
+    return { message: "Location updated" };
+  }
+
+  async requestReschedule(
+    bookingUid: string,
+    requestRescheduleInput: RequestRescheduleInput,
+    user: UserWithProfile
+  ): Promise<{ message: string }> {
+    const { reason: cancellationReason } = requestRescheduleInput;
+    const bookingToReschedule = await this.prismaReadService.prisma.booking.findFirstOrThrow({
+      select: {
+        id: true,
+        uid: true,
+        userId: true,
+        title: true,
+        description: true,
+        startTime: true,
+        endTime: true,
+        eventTypeId: true,
+        userPrimaryEmail: true,
+        user: {
+          select: {
+            email: true,
+          },
+        },
+        eventType: {
+          include: {
+            team: {
+              select: {
+                slug: true,
+                id: true,
+                name: true,
+                parentId: true,
+              },
+            },
+          },
+        },
+        location: true,
+        attendees: true,
+        references: true,
+        customInputs: true,
+        dynamicEventSlugRef: true,
+        dynamicGroupSlugRef: true,
+        destinationCalendar: true,
+        smsReminderNumber: true,
+        workflowReminders: true,
+        responses: true,
+        iCalUID: true,
+      },
+      where: {
+        uid: bookingUid,
+        NOT: {
+          status: {
+            in: ["CANCELLED", "REJECTED"],
+          },
+        },
+      },
+    });
+
+    if (!bookingToReschedule.userId) {
+      throw new BadRequestException({
+        code: "FORBIDDEN",
+        message: "Booking to reschedule doesn't have an owner",
+      });
+    }
+
+    if (!bookingToReschedule.eventType && !bookingToReschedule.dynamicEventSlugRef) {
+      throw new BadRequestException({
+        code: "FORBIDDEN",
+        message: "EventType not found for current booking.",
+      });
+    }
+
+    const bookingBelongsToTeam = !!bookingToReschedule.eventType?.teamId;
+
+    const userTeams = await this.prismaReadService.prisma.user.findUniqueOrThrow({
+      where: {
+        id: bookingToReschedule.userId,
+      },
+      select: {
+        teams: true,
+      },
+    });
+
+    if (bookingBelongsToTeam && bookingToReschedule.eventType?.teamId) {
+      const userTeamIds = userTeams.teams.map((item) => item.teamId);
+      if (userTeamIds.indexOf(bookingToReschedule?.eventType?.teamId) === -1) {
+        throw new BadRequestException({ code: "FORBIDDEN", message: "User isn't a member on the team" });
+      }
+    }
+
+    if (!bookingBelongsToTeam && bookingToReschedule.userId !== bookingToReschedule.userId) {
+      throw new BadRequestException({
+        code: "FORBIDDEN",
+        message: "User isn't owner of the current booking",
+      });
+    }
+
+    if (!bookingToReschedule) {
+      throw new BadRequestException({
+        code: "FORBIDDEN",
+        message: "Booking to reschedule not found",
+      });
+    }
+
+    let event: Partial<EventType> = {};
+    if (bookingToReschedule.eventTypeId) {
+      event = await this.prismaReadService.prisma.eventType.findFirstOrThrow({
+        select: {
+          title: true,
+          schedulingType: true,
+          recurringEvent: true,
+        },
+        where: {
+          id: bookingToReschedule.eventTypeId,
+        },
+      });
+    }
+
+    await this.prismaReadService.prisma.booking.update({
+      where: {
+        id: bookingToReschedule.id,
+      },
+      data: {
+        rescheduled: true,
+        cancellationReason,
+        status: "CANCELLED",
+        updatedAt: new Date().toISOString(),
+        cancelledBy: user.email,
+      },
+    });
+
+    const webhookPromises = [];
+
+    const requestRescheduleHelpers = new RequestRescheduleHelpers(
+      this.prismaReadService,
+      this.prismaWriteService
+    );
+
+    webhookPromises.push(
+      requestRescheduleHelpers._deleteWebhookScheduledTriggers({ booking: bookingToReschedule })
+    );
+
+    await Promise.all(webhookPromises).catch((error) => {
+      this.logger.error("Error while deleting scheduled webhook triggers", JSON.stringify({ error }));
+    });
+
+    requestRescheduleHelpers.deleteAllWorkflowReminders(bookingToReschedule.workflowReminders);
+
+    const [mainAttendee] = bookingToReschedule.attendees;
+    // @NOTE: Should we assume attendees language?
+    const tAttendees = await getTranslation(mainAttendee.locale ?? "en", "common");
+    const usersToPeopleType = (
+      users: PersonAttendeeCommonFields[],
+      selectedLanguage: TFunction
+    ): Person[] => {
+      return users?.map((user) => {
+        return {
+          email: user.email || "",
+          name: user.name || "",
+          username: user?.username || "",
+          language: { translate: selectedLanguage, locale: user.locale || "en" },
+          timeZone: user?.timeZone,
+          phoneNumber: user.phoneNumber,
+        };
+      });
+    };
+
+    const userTranslation = await getTranslation(user.locale ?? "en", "common");
+    const [userAsPeopleType] = usersToPeopleType([user], userTranslation);
+    const organizer = {
+      ...userAsPeopleType,
+      email: bookingToReschedule?.userPrimaryEmail ?? userAsPeopleType.email,
+    };
+
+    const builder = new CalendarEventBuilder(this.prismaReadService);
+    const eventType = bookingToReschedule.eventType;
+    builder.init({
+      title: bookingToReschedule.title,
+      bookerUrl: eventType?.team
+        ? await requestRescheduleHelpers.getBookerBaseUrl(eventType.team.parentId)
+        : await requestRescheduleHelpers.getBookerBaseUrl(user.organizationId ?? null),
+      type: event && event.slug ? event.slug : bookingToReschedule.title,
+      startTime: bookingToReschedule.startTime.toISOString(),
+      endTime: bookingToReschedule.endTime.toISOString(),
+      hideOrganizerEmail: eventType?.hideOrganizerEmail,
+      attendees: usersToPeopleType(
+        // username field doesn't exists on attendee but could be in the future
+        bookingToReschedule.attendees as unknown as PersonAttendeeCommonFields[],
+        tAttendees
+      ),
+      organizer,
+      iCalUID: bookingToReschedule.iCalUID,
+      customReplyToEmail: bookingToReschedule.eventType?.customReplyToEmail,
+      team: !!bookingToReschedule.eventType?.team
+        ? {
+            name: bookingToReschedule.eventType.team.name,
+            id: bookingToReschedule.eventType.team.id,
+            members: [],
+          }
+        : undefined,
+    });
+
+    const director = new CalendarEventDirector();
+    director.setBuilder(builder);
+    director.setExistingBooking(bookingToReschedule);
+    cancellationReason && director.setCancellationReason(cancellationReason);
+    if (Object.keys(event).length) {
+      // Request Reschedule flow first cancels the booking and then reschedule email is sent. So, we need to allow reschedule for cancelled booking
+      await director.buildForRescheduleEmail({
+        allowRescheduleForCancelledBooking: true,
+        eventTypeEmail: user.email,
+        slug: eventType?.slug,
+      });
+    } else {
+      await director.buildWithoutEventTypeForRescheduleEmail();
+    }
+
+    // Handling calendar and videos cancellation
+    // This can set previous time as available, until virtual calendar is done
+    const credentials = await this.getUsersCredentialsIncludeServiceAccountKey(user);
+    const credentialsMap = new Map();
+    credentials.forEach((credential) => {
+      credentialsMap.set(credential.type, credential);
+    });
+    const bookingRefsFiltered: BookingReference[] = bookingToReschedule.references.filter((ref) =>
+      credentialsMap.has(ref.type)
+    );
+
+    // FIXME: error-handling
+    await Promise.allSettled(
+      bookingRefsFiltered.map(async (bookingRef) => {
+        if (!bookingRef.uid) return;
+
+        if (bookingRef.type.endsWith("_calendar")) {
+          const calendar = await getCalendar(
+            getDelegationCredentialOrRegularCredential({
+              credentials,
+              id: {
+                credentialId: bookingRef?.credentialId,
+                delegationCredentialId: bookingRef?.delegationCredentialId,
+              },
+            })
+          );
+          return calendar?.deleteEvent(bookingRef.uid, builder.calendarEvent, bookingRef.externalCalendarId);
+        } else if (bookingRef.type.endsWith("_video")) {
+          return deleteMeeting(
+            getDelegationCredentialOrRegularCredential({
+              credentials,
+              id: {
+                credentialId: bookingRef?.credentialId,
+                delegationCredentialId: bookingRef?.delegationCredentialId,
+              },
+            }),
+            bookingRef.uid
+          );
+        }
+      })
+    );
+
+    // Send emails
+    await sendRequestRescheduleEmailAndSMS(
+      builder.calendarEvent,
+      {
+        rescheduleLink: builder.rescheduleLink,
+      },
+      eventType?.metadata as EventTypeMetadata
+    );
+
+    const evt: CalendarEvent = {
+      title: bookingToReschedule?.title,
+      type: event && event.slug ? event.slug : bookingToReschedule.title,
+      description: bookingToReschedule?.description || "",
+      customInputs: isPrismaObjOrUndefined(bookingToReschedule.customInputs),
+      ...getCalEventResponses({
+        booking: bookingToReschedule,
+        bookingFields: bookingToReschedule.eventType?.bookingFields ?? null,
+      }),
+      startTime: bookingToReschedule?.startTime ? new Date(bookingToReschedule.startTime).toISOString() : "",
+      endTime: bookingToReschedule?.endTime ? new Date(bookingToReschedule.endTime).toISOString() : "",
+      organizer,
+      attendees: usersToPeopleType(
+        // username field doesn't exists on attendee but could be in the future
+        bookingToReschedule.attendees as unknown as PersonAttendeeCommonFields[],
+        tAttendees
+      ),
+      uid: bookingToReschedule?.uid,
+      location: bookingToReschedule?.location,
+      destinationCalendar: bookingToReschedule?.destinationCalendar
+        ? [bookingToReschedule?.destinationCalendar]
+        : [],
+      cancellationReason: `Please reschedule. ${cancellationReason}`, // TODO::Add i18-next for this
+      iCalUID: bookingToReschedule?.iCalUID,
+    };
+
+    // Send webhook
+    const eventTrigger: WebhookTriggerEvents = "BOOKING_CANCELLED";
+
+    const teamId = await requestRescheduleHelpers.getTeamIdFromEventType({
+      eventType: {
+        team: { id: bookingToReschedule.eventType?.teamId ?? null },
+        parentId: bookingToReschedule?.eventType?.parentId ?? null,
+      },
+    });
+
+    const triggerForUser = !teamId || (teamId && bookingToReschedule.eventType?.parentId);
+    const userId = triggerForUser ? bookingToReschedule.userId : null;
+    const orgId = await requestRescheduleHelpers.getOrgIdFromMemberOrTeamId({ memberId: userId, teamId });
+
+    // Send Webhook call if hooked to BOOKING.CANCELLED
+    const subscriberOptions = {
+      userId,
+      eventTypeId: bookingToReschedule.eventTypeId as number,
+      triggerEvent: eventTrigger,
+      teamId: teamId ? [teamId] : null,
+      orgId,
+    };
+    const webhooks = await requestRescheduleHelpers.getWebhooks(subscriberOptions);
+
+    const promises = webhooks.map((webhook) =>
+      sendPayload(webhook.secret, eventTrigger, new Date().toISOString(), webhook, {
+        ...evt,
+        smsReminderNumber: bookingToReschedule.smsReminderNumber || undefined,
+        cancelledBy: user.email,
+      }).catch(() => {
+        this.logger.error(
+          `Error executing webhook for event: ${eventTrigger}, URL: ${webhook.subscriberUrl}, bookingId: ${evt.bookingId}, bookingUid: ${evt.uid}`
+        );
+      })
+    );
+    await Promise.all(promises);
+
+    return { message: "Reschedule request sent" };
+  }
+
+  async isTeamAdmin(userId: number, teamId: number) {
+    const team = await this.prismaReadService.prisma.membership.findFirst({
+      where: {
+        userId,
+        teamId,
+        accepted: true,
+        OR: [{ role: "ADMIN" }, { role: "OWNER" }],
+      },
+      include: {
+        team: {
+          select: {
+            metadata: true,
+            parentId: true,
+            isOrganization: true,
+          },
+        },
+      },
+    });
+    if (!team) return false;
+    return team;
+  }
+
+  async isTeamOwner(userId: number, teamId: number) {
+    return !!(await this.prismaReadService.prisma.membership.findFirst({
+      where: {
+        userId,
+        teamId,
+        accepted: true,
+        role: "OWNER",
+      },
+    }));
+  }
+
+  async addGuests(bookingUid: string, body: AddGuestsInput_2024_08_13, user: UserWithProfile) {
+    const { guests } = body;
+    const booking = await this.bookingsRepository.getBookingWithExtraInfoForAddGuests(bookingUid);
+    if (!booking) {
+      throw new NotFoundException(`Booking with uid=${bookingUid} was not found in the database`);
+    }
+
+    const isTeamAdminOrOwner =
+      (await this.isTeamAdmin(user.id, booking.eventType?.teamId ?? 0)) ||
+      (await this.isTeamOwner(user.id, booking.eventType?.teamId ?? 0));
+
+    const isOrganizer = booking.userId === user.id;
+
+    const isAttendee = !!booking.attendees.find((attendee) => attendee.email === user.email);
+
+    if (!isTeamAdminOrOwner && !isOrganizer && !isAttendee) {
+      throw new Error("You are not authorized to add guests to this booking");
+    }
+
+    const organizer = await this.prismaReadService.prisma.user.findFirst({
+      where: {
+        id: booking.userId || 0,
+      },
+      select: {
+        name: true,
+        email: true,
+        timeZone: true,
+        locale: true,
+      },
+    });
+
+    if (!organizer) {
+      throw new NotFoundException(`Organizer with id=${booking.userId} was not found in the database`);
+    }
+
+    const blacklistedGuestEmails = process.env.BLACKLISTED_GUEST_EMAILS
+      ? process.env.BLACKLISTED_GUEST_EMAILS.split(",").map((email) => email.toLowerCase())
+      : [];
+
+    const uniqueGuests = guests.filter(
+      (guest) =>
+        !booking.attendees.some((attendee) => guest === attendee.email) &&
+        !blacklistedGuestEmails.includes(guest)
+    );
+
+    const guestsFullDetails = uniqueGuests.map((guest) => {
+      return {
+        name: "",
+        email: guest,
+        timeZone: organizer.timeZone,
+        locale: organizer.locale,
+      };
+    });
+
+    const bookingAttendees = await this.prismaReadService.prisma.booking.update({
+      where: {
+        id: booking.id,
+      },
+      include: {
+        attendees: true,
+      },
+      data: {
+        attendees: {
+          createMany: {
+            data: guestsFullDetails,
+          },
+        },
+      },
+    });
+
+    const attendeesListPromises = bookingAttendees.attendees.map(async (attendee) => {
+      return {
+        name: attendee.name,
+        email: attendee.email,
+        timeZone: attendee.timeZone,
+        language: {
+          translate: await getTranslation(attendee.locale ?? "en", "common"),
+          locale: attendee.locale ?? "en",
+        },
+      };
+    });
+
+    const attendeesList = await Promise.all(attendeesListPromises);
+    const tOrganizer = await getTranslation(organizer.locale ?? "en", "common");
+    const videoCallReference = booking.references.find((reference) => reference.type.includes("_video"));
+
+    const evt: CalendarEvent = {
+      title: booking.title || "",
+      type: (booking.eventType?.title as string) || booking?.title || "",
+      description: booking.description || "",
+      startTime: booking.startTime ? new Date(booking.startTime).toISOString() : "",
+      endTime: booking.endTime ? new Date(booking.endTime).toISOString() : "",
+      organizer: {
+        email: booking?.userPrimaryEmail ?? organizer.email,
+        name: organizer.name ?? "Nameless",
+        timeZone: organizer.timeZone,
+        language: { translate: tOrganizer, locale: organizer.locale ?? "en" },
+      },
+      hideOrganizerEmail: booking.eventType?.hideOrganizerEmail,
+      attendees: attendeesList,
+      uid: booking.uid,
+      recurringEvent: parseRecurringEvent(booking.eventType?.recurringEvent),
+      location: booking.location,
+      destinationCalendar: booking?.destinationCalendar
+        ? [booking?.destinationCalendar]
+        : booking?.user?.destinationCalendar
+        ? [booking?.user?.destinationCalendar]
+        : [],
+      seatsPerTimeSlot: booking.eventType?.seatsPerTimeSlot,
+      seatsShowAttendees: booking.eventType?.seatsShowAttendees,
+      customReplyToEmail: booking.eventType?.customReplyToEmail,
+    };
+
+    if (videoCallReference) {
+      evt.videoCallData = {
+        type: videoCallReference.type,
+        id: videoCallReference.meetingId,
+        password: videoCallReference?.meetingPassword,
+        url: videoCallReference.meetingUrl,
+      };
+    }
+
+    const credentials = await this.getUsersCredentialsIncludeServiceAccountKey(user);
+
+    const loggedInUser = {
+      ...organizer,
+      destinationCalendar: booking.destinationCalendar,
+      credentials: [...credentials],
+    };
+
+    const eventManager = new EventManager(loggedInUser, this.prismaReadService);
+
+    await eventManager.updateCalendarAttendees(evt, booking);
+
+    try {
+      await sendAddGuestsEmails(evt, guests);
+    } catch (err) {
+      console.log("Error sending AddGuestsEmails", err);
+    }
+
+    return { message: "Guests added successfully" };
   }
 }

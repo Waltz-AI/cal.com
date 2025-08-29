@@ -26,7 +26,7 @@ export const getServerSideProps = async function getServerSideProps(
 
   const isEmbed = appPages[1] === "embed";
 
-  const form = await prisma.app_RoutingForms_Form.findUnique({
+  const form = await prisma.app_RoutingForms_Form.findFirst({
     where: {
       id: formId,
     },
@@ -67,10 +67,9 @@ export const getServerSideProps = async function getServerSideProps(
   }
 
   const { UserRepository } = await import("@calcom/lib/server/repository/user");
-  const userRepo = new UserRepository(prisma);
   const formWithUserProfile = {
     ...form,
-    user: await userRepo.enrichUserWithItsProfile({ user: form.user }),
+    user: await UserRepository.enrichUserWithItsProfile({ user: form.user }),
   };
 
   if (

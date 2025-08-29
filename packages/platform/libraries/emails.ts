@@ -1,3 +1,8 @@
+import {
+  sendLocationChangeEmailsAndSMS,
+  sendAddGuestsEmails,
+  sendRequestRescheduleEmailAndSMS,
+} from "@calcom/emails";
 import AttendeeCancelledEmail from "@calcom/emails/templates/attendee-cancelled-email";
 import AttendeeDeclinedEmail from "@calcom/emails/templates/attendee-declined-email";
 import AttendeeRequestEmail from "@calcom/emails/templates/attendee-request-email";
@@ -43,3 +48,8 @@ export { sendSignupToOrganizationEmail };
 export { sendEmailVerificationByCode };
 
 export { verifyEmailCodeHandler };
+
+export { sendLocationChangeEmailsAndSMS };
+
+export { sendAddGuestsEmails };
+export { sendRequestRescheduleEmailAndSMS };

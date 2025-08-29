@@ -17,7 +17,7 @@ import TeamListItem from "./TeamListItem";
 
 interface Props {
   teams: RouterOutputs["viewer"]["teams"]["list"];
-  orgId: number | null;
+  user: RouterOutputs["viewer"]["me"]["get"];
   /**
    * True for teams that are pending invite acceptance
    */
@@ -28,7 +28,7 @@ export default function TeamList(props: Props) {
   const utils = trpc.useUtils();
 
   const { t } = useLocale();
-  const { orgId } = props;
+  const { user } = props;
 
   const [hideDropdown, setHideDropdown] = useState(false);
 
@@ -56,11 +56,13 @@ export default function TeamList(props: Props) {
     deleteTeamMutation.mutate({ teamId });
   }
 
+  if (!user) return null;
+  const isUserAlreadyInAnOrganization = user.profile.organization;
   return (
     <ul className="bg-default divide-subtle border-subtle mb-2 divide-y overflow-hidden rounded-md border">
       {ORG_SELF_SERVE_ENABLED &&
         !props.pending &&
-        !orgId &&
+        !isUserAlreadyInAnOrganization &&
         props.teams.length >= ORG_MINIMUM_PUBLISHED_TEAMS_SELF_SERVE_HELPER_DIALOGUE &&
         props.teams.map(
           (team, i) =>
@@ -101,7 +103,7 @@ export default function TeamList(props: Props) {
                       "As an organization owner, you are in charge of every team account. You can make changes with admin-only tools and see organization wide analytics in one place."
                     )}
                     actionButton={{
-                      href: "https://go.cal.com/quote",
+                      href: "https://i.cal.com/sales/enterprise",
                       child: t("learn_more"),
                     }}
                   />
@@ -114,7 +116,7 @@ export default function TeamList(props: Props) {
         <TeamListItem
           key={team?.id as number}
           team={team}
-          orgId={orgId}
+          user={user}
           onActionSelect={(action: string) => selectAction(action, team?.id as number)}
           isPending={deleteTeamMutation.isPending}
           hideDropdown={hideDropdown}

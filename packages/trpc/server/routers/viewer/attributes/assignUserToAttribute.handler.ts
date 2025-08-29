@@ -77,12 +77,10 @@ const assignUserToAttributeHandler = async ({ input, ctx }: GetOptions) => {
     });
   }
 
-  const membership = await prisma.membership.findUnique({
+  const membership = await prisma.membership.findFirst({
     where: {
-      userId_teamId: {
-        userId: input.userId,
-        teamId: org.id,
-      },
+      userId: input.userId,
+      teamId: org.id,
     },
   });
 

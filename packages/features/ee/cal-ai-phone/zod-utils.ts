@@ -123,7 +123,7 @@ export const ZCreateRetellLLMSchema = z
   .object({
     llm_id: z.string(),
     llm_websocket_url: z.string().optional(),
-    inbound_dynamic_variables_webhook_url: z.string().optional(),
+    inbound_dynamic_variables_webhook_url: z.string(),
   })
   .passthrough();
 
@@ -135,7 +135,7 @@ export const ZGetRetellLLMSchema = z
     begin_message: z.string().nullable().optional(),
     llm_id: z.string(),
     llm_websocket_url: z.string().optional(),
-    inbound_dynamic_variables_webhook_url: z.string().optional(),
+    inbound_dynamic_variables_webhook_url: z.string(),
     general_tools: z.array(
       z
         .object({

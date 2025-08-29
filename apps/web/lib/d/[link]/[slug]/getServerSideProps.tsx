@@ -1,4 +1,5 @@
 import type { EmbedProps } from "app/WithEmbedSSR";
+import { createRouterCaller } from "app/_trpc/context";
 import type { GetServerSidePropsContext } from "next";
 import { z } from "zod";
 
@@ -6,14 +7,11 @@ import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { getBookingForReschedule, getMultipleDurationValue } from "@calcom/features/bookings/lib/get-booking";
 import type { GetBookingType } from "@calcom/features/bookings/lib/get-booking";
 import { orgDomainConfig } from "@calcom/features/ee/organizations/lib/orgDomains";
-import { FeaturesRepository } from "@calcom/features/flags/features.repository";
-import { shouldHideBrandingForTeamEvent, shouldHideBrandingForUserEvent } from "@calcom/lib/hideBranding";
-import { EventRepository } from "@calcom/lib/server/repository/event";
 import { UserRepository } from "@calcom/lib/server/repository/user";
-import { HashedLinkService } from "@calcom/lib/server/service/hashedLinkService";
 import slugify from "@calcom/lib/slugify";
 import prisma from "@calcom/prisma";
 import { RedirectType } from "@calcom/prisma/enums";
+import { publicViewerRouter } from "@calcom/trpc/server/routers/publicViewer/_router";
 
 import { getTemporaryOrgRedirect } from "@lib/getTemporaryOrgRedirect";
 import type { inferSSRProps } from "@lib/types/inferSSRProps";
@@ -27,6 +25,38 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
   const { currentOrgDomain, isValidOrgDomain } = orgDomainConfig(context.req);
   const org = isValidOrgDomain ? currentOrgDomain : null;
 
+  const hashedLink = await prisma.hashedLink.findUnique({
+    where: {
+      link,
+    },
+    select: {
+      eventTypeId: true,
+      eventType: {
+        select: {
+          users: {
+            select: {
+              username: true,
+              profiles: {
+                select: {
+                  id: true,
+                  organizationId: true,
+                  username: true,
+                },
+              },
+            },
+          },
+          team: {
+            select: {
+              id: true,
+              slug: true,
+              hideBranding: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
   let name: string;
   let hideBranding = false;
 
@@ -34,31 +64,15 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
     notFound: true,
   } as const;
 
-  // Use centralized validation logic to avoid duplication
-  const hashedLinkService = new HashedLinkService();
-  try {
-    await hashedLinkService.validate(link);
-  } catch (error) {
-    // Link is expired, invalid, or doesn't exist
-    return notFound;
-  }
-
-  // If validation passes, fetch the complete data needed for rendering
-  const hashedLink = await hashedLinkService.findLinkWithDetails(link);
-
   if (!hashedLink) {
     return notFound;
   }
-
   const username = hashedLink.eventType.users[0]?.username;
   const profileUsername = hashedLink.eventType.users[0]?.profiles[0]?.username;
 
   if (hashedLink.eventType.team) {
     name = hashedLink.eventType.team.slug || "";
-    hideBranding = shouldHideBrandingForTeamEvent({
-      eventTypeId: hashedLink.eventTypeId,
-      team: hashedLink.eventType.team,
-    });
+    hideBranding = hashedLink.eventType.team.hideBranding;
   } else {
     if (!username) {
       return notFound;
@@ -79,8 +93,7 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
 
     name = profileUsername || username;
 
-    const userRepo = new UserRepository(prisma);
-    const [user] = await userRepo.findUsersByUsername({
+    const [user] = await UserRepository.findUsersByUsername({
       usernameList: [name],
       orgSlug: org,
     });
@@ -89,10 +102,7 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
       return notFound;
     }
 
-    hideBranding = shouldHideBrandingForUserEvent({
-      eventTypeId: hashedLink.eventTypeId,
-      owner: user,
-    });
+    hideBranding = user.hideBranding;
   }
 
   let booking: GetBookingType | null = null;
@@ -102,35 +112,24 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
 
   const isTeamEvent = !!hashedLink.eventType?.team?.id;
 
-  const eventData = await EventRepository.getPublicEvent(
-    {
-      username: name,
-      eventSlug: slug,
-      isTeamEvent,
-      org,
-      fromRedirectOfNonOrgLink: context.query.orgRedirection === "true",
-    },
-    session?.user?.id
-  );
+  // We use this to both prefetch the query on the server,
+  // as well as to check if the event exist, so we c an show a 404 otherwise.
+  const caller = await createRouterCaller(publicViewerRouter);
+
+  const eventData = await caller.event({
+    username: name,
+    eventSlug: slug,
+    isTeamEvent,
+    org,
+    fromRedirectOfNonOrgLink: context.query.orgRedirection === "true",
+  });
 
   if (!eventData) {
     return notFound;
   }
 
-  // Check if team has API v2 feature flag enabled (same logic as team pages)
-  let useApiV2 = false;
-  if (isTeamEvent && hashedLink.eventType.team?.id) {
-    const featureRepo = new FeaturesRepository(prisma);
-    const teamHasApiV2Route = await featureRepo.checkIfTeamHasFeature(
-      hashedLink.eventType.team.id,
-      "use-api-v2-for-team-slots"
-    );
-    useApiV2 = teamHasApiV2Route;
-  }
-
   return {
     props: {
-      useApiV2,
       eventData,
       entity: eventData.entity,
       duration: getMultipleDurationValue(
@@ -146,7 +145,7 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
       // Sending the team event from the server, because this template file
       // is reused for both team and user events.
       isTeamEvent,
-      hashedLink: hashedLink?.link,
+      hashedLink: link,
     },
   };
 }

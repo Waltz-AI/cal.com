@@ -5,9 +5,8 @@ import { v4 as uuid } from "uuid";
 import dayjs from "@calcom/dayjs";
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { MINUTES_TO_BOOK } from "@calcom/lib/constants";
-import { PrismaSelectedSlotRepository } from "@calcom/lib/server/repository/PrismaSelectedSlotRepository";
+import { SelectedSlotsRepository } from "@calcom/lib/server/repository/selectedSlots";
 import type { PrismaClient } from "@calcom/prisma";
-import { BookingStatus } from "@calcom/prisma/enums";
 
 import { TRPCError } from "@trpc/server";
 
@@ -24,8 +23,7 @@ interface ReserveSlotOptions {
 export const reserveSlotHandler = async ({ ctx, input }: ReserveSlotOptions) => {
   const { prisma, req, res } = ctx;
   const uid = req?.cookies?.uid || uuid();
-
-  const { slotUtcStartDate, slotUtcEndDate, eventTypeId, _isDryRun } = input;
+  const { slotUtcStartDate, slotUtcEndDate, eventTypeId, bookingUid, _isDryRun } = input;
   const releaseAt = dayjs.utc().add(parseInt(MINUTES_TO_BOOK), "minutes").format();
   const eventType = await prisma.eventType.findUnique({
     where: { id: eventTypeId },
@@ -45,12 +43,7 @@ export const reserveSlotHandler = async ({ ctx, input }: ReserveSlotOptions) => 
   if (eventType.seatsPerTimeSlot) {
     // Check to see if this is the last attendee
     const bookingWithAttendees = await prisma.booking.findFirst({
-      where: {
-        eventTypeId,
-        startTime: slotUtcStartDate,
-        endTime: slotUtcEndDate,
-        status: BookingStatus.ACCEPTED,
-      },
+      where: { uid: bookingUid },
       select: { attendees: true },
     });
     const bookingAttendeesLength = bookingWithAttendees?.attendees?.length;
@@ -64,8 +57,7 @@ export const reserveSlotHandler = async ({ ctx, input }: ReserveSlotOptions) => 
   }
 
   // Check for existing reservations for the same slot
-  const slotsRepo = new PrismaSelectedSlotRepository(prisma);
-  const reservedBySomeoneElse = await slotsRepo.findReservedByOthers({
+  const reservedBySomeoneElse = await SelectedSlotsRepository.findReservedByOthers({
     slot: {
       utcStartIso: slotUtcStartDate,
       utcEndIso: slotUtcEndDate,

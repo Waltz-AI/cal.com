@@ -9,12 +9,11 @@ const logger = new Logger({
   prettyErrorStackTemplate: "  • {{fileName}}\t{{method}}\n\t{{filePathWithLine}}", // default
   prettyErrorTemplate: "\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}", // default
   prettyLogTemplate: "{{hh}}:{{MM}}:{{ss}}:{{ms}} [{{logLevelName}}] ", // default with exclusion of `{{filePathWithLine}}`
-  stylePrettyLogs: !IS_PRODUCTION,
+  stylePrettyLogs: true,
   prettyLogStyles: {
     name: "yellow",
     dateIsoStr: "blue",
   },
-  type: IS_PRODUCTION ? "json" : "pretty",
 });
 
 export default logger;

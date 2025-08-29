@@ -49,6 +49,7 @@ export const getCalendar = async (
     log.warn(`calendar of type ${calendarType} is not implemented`);
     return null;
   }
+  log.info("Got calendarApp", calendarApp.lib.CalendarService);
   const CalendarService = calendarApp.lib.CalendarService;
   return new CalendarService(credential);
 };

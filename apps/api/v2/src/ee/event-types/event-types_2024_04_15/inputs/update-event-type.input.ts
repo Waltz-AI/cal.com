@@ -1,6 +1,7 @@
 import { Editable } from "@/ee/event-types/event-types_2024_04_15/inputs/enums/editable";
 import { BaseField } from "@/ee/event-types/event-types_2024_04_15/inputs/enums/field-type";
 import { Frequency } from "@/ee/event-types/event-types_2024_04_15/inputs/enums/frequency";
+import { PeriodType } from "@/ee/event-types/event-types_2024_04_15/inputs/enums/period-type";
 import { EventTypeLocation_2024_04_15 } from "@/ee/event-types/event-types_2024_04_15/inputs/event-type-location.input";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
@@ -281,6 +282,28 @@ export class IntervalLimits_2024_04_15 {
   PER_YEAR?: number;
 }
 
+export class BookingLimitsDuration {
+  @IsOptional()
+  @IsNumber()
+  @ApiPropertyOptional({ type: Number })
+  day?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @ApiPropertyOptional({ type: Number })
+  week?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @ApiPropertyOptional({ type: Number })
+  month?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @ApiPropertyOptional({ type: Number })
+  year?: number;
+}
+
 export class UpdateEventTypeInput_2024_04_15 {
   @IsInt()
   @Min(1)
@@ -313,6 +336,9 @@ export class UpdateEventTypeInput_2024_04_15 {
   @IsOptional()
   @ApiPropertyOptional({ type: [EventTypeLocation_2024_04_15] })
   locations?: EventTypeLocation_2024_04_15[];
+
+  @IsOptional()
+  metadata?: Record<string, any>;
 
   // @IsInt()
   // @IsOptional()
@@ -353,25 +379,35 @@ export class UpdateEventTypeInput_2024_04_15 {
   // @IsOptional()
   // timeZone?: string;
 
-  // @IsEnum(PeriodType)
-  // @IsOptional()
-  // periodType?: PeriodType; -> import { PeriodType } from "@/ee/event-types/inputs/enums/period-type";
+  @IsEnum(PeriodType)
+  @IsOptional()
+  periodType?: PeriodType;
 
-  // @IsDate()
-  // @IsOptional()
-  // periodStartDate?: Date;
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  periodStartDate?: Date;
 
-  // @IsDate()
-  // @IsOptional()
-  // periodEndDate?: Date;
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  periodEndDate?: Date;
 
-  // @IsInt()
-  // @IsOptional()
-  // periodDays?: number;
+  @IsInt()
+  @IsOptional()
+  periodDays?: number;
 
-  // @IsBoolean()
-  // @IsOptional()
-  // periodCountCalendarDays?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  periodCountCalendarDays?: boolean;
+
+  @IsOptional()
+  bookingLimitsDuration?: BookingLimitsDuration;
+
+  @ValidateNested()
+  @Type(() => IntervalLimits_2024_04_15)
+  @IsOptional()
+  durationLimits?: IntervalLimits_2024_04_15;
 
   // @IsBoolean()
   // @IsOptional()
@@ -424,9 +460,9 @@ export class UpdateEventTypeInput_2024_04_15 {
   @ApiPropertyOptional()
   seatsPerTimeSlot?: number;
 
-  // @IsBoolean()
-  // @IsOptional()
-  // onlyShowFirstAvailableSlot?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  onlyShowFirstAvailableSlot?: boolean;
 
   // @IsBoolean()
   // @IsOptional()
@@ -440,9 +476,9 @@ export class UpdateEventTypeInput_2024_04_15 {
   // @IsOptional()
   // schedulingType?: SchedulingType; -> import { SchedulingType } from "@/ee/event-types/inputs/enums/scheduling-type";
 
-  // @IsInt()
-  // @IsOptional()
-  // scheduleId?: number;
+  @IsInt()
+  @IsOptional()
+  schedule?: number;
 
   // @IsInt()
   // @IsOptional()
@@ -463,10 +499,10 @@ export class UpdateEventTypeInput_2024_04_15 {
   // @IsUrl()
   // successRedirectUrl?: string;
 
-  // @ValidateNested()
-  // @Type(() => IntervalLimits)
-  // @IsOptional()
-  // bookingLimits?: IntervalLimits;
+  @ValidateNested()
+  @Type(() => IntervalLimits_2024_04_15)
+  @IsOptional()
+  bookingLimits?: IntervalLimits_2024_04_15;
 
   // @ValidateNested()
   // @Type(() => IntervalLimits)

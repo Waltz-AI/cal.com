@@ -66,7 +66,6 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: null,
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: null,
     });
     expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
@@ -101,7 +100,6 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: null,
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: null,
     });
     expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
@@ -153,7 +151,6 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: null,
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: null,
     });
     expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
@@ -205,7 +202,6 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: null,
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: null,
     });
     expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
@@ -233,7 +229,6 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: null,
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: null,
     });
     expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
@@ -277,7 +272,6 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: null,
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: {
         skipContactOwner: true,
       },
@@ -323,31 +317,8 @@ describe("getUrlSearchParamsToForward", () => {
       searchParams,
       teamMembersMatchingAttributeLogic: [1, 2],
       formResponseId: 1,
-      queuedFormResponseId: null,
       attributeRoutingConfig: null,
     });
     expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
-  });
-
-  describe("Dry Run", () => {
-    it("should add cal.routingFormResponseId=0 when formResponseId is 0", () => {
-      const searchParams = new URLSearchParams("?query1=value1&query2=value2");
-      const expectedParams = {
-        "cal.routingFormResponseId": "0",
-        query1: "value1",
-        query2: "value2",
-      };
-
-      const result = getUrlSearchParamsToForward({
-        formResponse: {},
-        fields: [],
-        searchParams,
-        teamMembersMatchingAttributeLogic: null,
-        formResponseId: 0,
-        queuedFormResponseId: null,
-        attributeRoutingConfig: null,
-      });
-      expect(fromEntriesWithDuplicateKeys(result.entries())).toEqual(expectedParams);
-    });
   });
 });

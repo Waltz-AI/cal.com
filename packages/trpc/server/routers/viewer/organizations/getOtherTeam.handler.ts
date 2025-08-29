@@ -22,7 +22,7 @@ type GetOptions = {
 
 export const getOtherTeamHandler = async ({ input }: GetOptions) => {
   // No need to validate if user is admin of org as we already do that on authedOrgAdminProcedure
-  const team = await prisma.team.findUnique({
+  const team = await prisma.team.findFirst({
     where: {
       id: input.teamId,
     },

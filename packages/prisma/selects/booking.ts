@@ -1,6 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
-export const bookingMinimalSelect = {
+export const bookingMinimalSelect = Prisma.validator<Prisma.BookingSelect>()({
   id: true,
   title: true,
   userPrimaryEmail: true,
@@ -10,4 +10,4 @@ export const bookingMinimalSelect = {
   endTime: true,
   attendees: true,
   metadata: true,
-} satisfies Prisma.BookingSelect;
+});

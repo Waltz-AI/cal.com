@@ -1,6 +1,6 @@
 import { WorkflowRepository } from "@calcom/lib/server/repository/workflow";
 import type { PrismaClient } from "@calcom/prisma";
-import type { Prisma } from "@calcom/prisma/client";
+import { Prisma } from "@calcom/prisma/client";
 import type { TrpcSessionUser } from "@calcom/trpc/server/types";
 
 import type { TFilteredListInputSchema } from "./filteredList.schema";
@@ -13,7 +13,7 @@ type FilteredListOptions = {
   input: TFilteredListInputSchema;
 };
 
-const { include: includedFields } = {
+const { include: includedFields } = Prisma.validator<Prisma.WorkflowDefaultArgs>()({
   include: {
     activeOn: {
       select: {
@@ -53,7 +53,7 @@ const { include: includedFields } = {
       },
     },
   },
-} satisfies Prisma.WorkflowDefaultArgs;
+});
 
 export const filteredListHandler = async ({ ctx, input }: FilteredListOptions) => {
   return await WorkflowRepository.getFilteredList({ userId: ctx.user.id, input });

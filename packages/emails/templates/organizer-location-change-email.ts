@@ -19,8 +19,7 @@ export default class OrganizerLocationChangeEmail extends OrganizerScheduledEmai
       to: toAddresses.join(","),
       ...getReplyToHeader(
         this.calEvent,
-        this.calEvent.attendees.map(({ email }) => email),
-        true
+        this.calEvent.attendees.map(({ email }) => email)
       ),
       subject: `${this.t("location_changed_event_type_subject", {
         eventType: this.calEvent.type,

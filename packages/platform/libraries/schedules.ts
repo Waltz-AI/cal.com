@@ -1,7 +1,6 @@
-export {
-  ScheduleRepository,
-  type FindDetailedScheduleByIdReturnType,
-} from "@calcom/lib/server/repository/schedule";
+import {
+  transformApiScheduleOverrides,
+  transformApiScheduleAvailability,
+} from "@calcom/lib/schedules/transformers/from-api";
 
-export { updateSchedule, type UpdateScheduleResponse } from "@calcom/lib/schedules/updateSchedule";
-export {UserAvailabilityService} from "@calcom/lib/getUserAvailability"
+export { transformApiScheduleOverrides, transformApiScheduleAvailability };

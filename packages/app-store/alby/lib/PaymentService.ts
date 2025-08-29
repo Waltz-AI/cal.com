@@ -31,7 +31,7 @@ export class PaymentService implements IAbstractPaymentService {
     bookingId: Booking["id"]
   ) {
     try {
-      const booking = await prisma.booking.findUnique({
+      const booking = await prisma.booking.findFirst({
         select: {
           uid: true,
           title: true,

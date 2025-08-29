@@ -5,8 +5,8 @@ import prisma from "@calcom/prisma";
 import type { AttributeToUser } from "@calcom/prisma/client";
 import type { AttributeType } from "@calcom/prisma/enums";
 
-import { PrismaAttributeRepository } from "../../../server/repository/PrismaAttributeRepository";
-import { PrismaAttributeToUserRepository } from "../../../server/repository/PrismaAttributeToUserRepository";
+import { AttributeRepository } from "../../../server/repository/attribute";
+import { AttributeToUserRepository } from "../../../server/repository/attributeToUser";
 import { MembershipRepository } from "../../../server/repository/membership";
 import type { AttributeId } from "../types";
 
@@ -218,13 +218,13 @@ async function _getOrgMembershipToUserIdForTeam({ orgId, teamId }: { orgId: numb
 async function _queryAllData({ orgId, teamId }: { orgId: number; teamId: number }) {
   const [orgMembershipToUserIdForTeamMembers, attributesOfTheOrg] = await Promise.all([
     _getOrgMembershipToUserIdForTeam({ orgId, teamId }),
-    PrismaAttributeRepository.findManyByOrgId({ orgId }),
+    AttributeRepository.findManyByOrgId({ orgId }),
   ]);
 
   const orgMembershipIds = Array.from(orgMembershipToUserIdForTeamMembers.keys());
 
   // Get all the attributes assigned to the members of the team
-  const attributesToUsersForTeam = await PrismaAttributeToUserRepository.findManyByOrgMembershipIds({
+  const attributesToUsersForTeam = await AttributeToUserRepository.findManyByOrgMembershipIds({
     orgMembershipIds,
   });
 

@@ -47,7 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== "POST") {
       throw new HttpCode({ statusCode: 405, message: "Method Not Allowed" });
     }
-
     const obj: WebhookReturn = req.body as WebhookReturn;
     const excluded = { ...obj } as Partial<WebhookReturn>;
     delete excluded.hmac;

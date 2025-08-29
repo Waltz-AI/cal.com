@@ -53,9 +53,10 @@ export type OAuthCallbackState = {
   path: "/v2/organizations/:orgId/teams/:teamId/stripe",
   version: API_VERSIONS_VALUES,
 })
-@DocsTags("Orgs / Teams / Stripe")
+@DocsTags("Organizations/Teams Stripe")
 export class OrganizationsStripeController {
   constructor(
+    private readonly stripeService: StripeService,
     private readonly organizationsStripeService: OrganizationsStripeService,
     private readonly tokensRepository: TokensRepository
   ) {}
@@ -65,7 +66,7 @@ export class OrganizationsStripeController {
   @UseGuards(ApiAuthGuard, IsOrgGuard, RolesGuard, IsTeamInOrg, PlatformPlanGuard, IsAdminAPIEnabledGuard)
   @Get("/connect")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Get Stripe connect URL for a team" })
+  @ApiOperation({ summary: "Get stripe connect URL for a team" })
   async getTeamStripeConnectUrl(
     @Req() req: Request,
     @Headers("Authorization") authorization: string,
@@ -104,7 +105,7 @@ export class OrganizationsStripeController {
   @UseGuards(ApiAuthGuard, IsOrgGuard, RolesGuard, IsTeamInOrg, PlatformPlanGuard, IsAdminAPIEnabledGuard)
   @Get("/check")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Check team Stripe connection" })
+  @ApiOperation({ summary: "Check team stripe connection" })
   async checkTeamStripeConnection(
     @Param("teamId", ParseIntPipe) teamId: number
   ): Promise<StripCredentialsCheckOutputResponseDto> {
@@ -116,7 +117,7 @@ export class OrganizationsStripeController {
   @UseGuards(ApiAuthGuard, IsOrgGuard, RolesGuard, IsTeamInOrg, PlatformPlanGuard, IsAdminAPIEnabledGuard)
   @Get("/save")
   @Redirect(undefined, 301)
-  @ApiOperation({ summary: "Save Stripe credentials" })
+  @ApiOperation({ summary: "Save stripe credentials" })
   async save(
     @Query("state") state: string,
     @Query("code") code: string,

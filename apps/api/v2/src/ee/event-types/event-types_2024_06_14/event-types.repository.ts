@@ -1,8 +1,9 @@
-import { InputEventTransformed_2024_06_14 } from "@/ee/event-types/event-types_2024_06_14/transformed";
 import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
 import { PrismaWriteService } from "@/modules/prisma/prisma-write.service";
 import { Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
+
+import { InputEventTransformed_2024_06_14 } from "@calcom/platform-types";
 
 @Injectable()
 export class EventTypesRepository_2024_06_14 {
@@ -12,20 +13,13 @@ export class EventTypesRepository_2024_06_14 {
     userId: number,
     body: Omit<InputEventTransformed_2024_06_14, "destinationCalendar">
   ) {
-    const { calVideoSettings, ...restBody } = body;
-
     return this.dbWrite.prisma.eventType.create({
       data: {
-        ...restBody,
+        ...body,
         userId,
         locations: body.locations,
         bookingFields: body.bookingFields,
         users: { connect: { id: userId } },
-        ...(calVideoSettings && {
-          calVideoSettings: {
-            create: calVideoSettings,
-          },
-        }),
       },
     });
   }
@@ -78,7 +72,7 @@ export class EventTypesRepository_2024_06_14 {
   async getEventTypeById(eventTypeId: number) {
     return this.dbRead.prisma.eventType.findUnique({
       where: { id: eventTypeId },
-      include: { users: true, schedule: true, destinationCalendar: true, calVideoSettings: true },
+      include: { users: true, schedule: true, destinationCalendar: true },
     });
   }
 

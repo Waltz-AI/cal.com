@@ -31,7 +31,7 @@ export function TextFilterOptions({ column }: TextFilterOptionsProps) {
   });
 
   return (
-    <div className="mx-3 my-2" data-testid={`text-filter-options-${column.id}`}>
+    <div className="mx-3 my-2">
       <Form
         form={form}
         handleSubmit={({ operatorOption, operand }) => {
@@ -52,7 +52,6 @@ export function TextFilterOptions({ column }: TextFilterOptionsProps) {
             render={({ field: { value } }) => (
               <>
                 <Select
-                  data-testid={`text-filter-options-select-${column.id}`}
                   options={textFilterOperatorOptions}
                   value={value}
                   isSearchable={false}

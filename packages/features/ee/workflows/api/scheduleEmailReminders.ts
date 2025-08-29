@@ -21,7 +21,6 @@ import {
   getAllRemindersToCancel,
   getAllRemindersToDelete,
   getAllUnscheduledReminders,
-  getWorkflowRecipientEmail,
 } from "../lib/getWorkflowReminders";
 import { sendOrScheduleWorkflowEmails } from "../lib/reminders/providers/emailProvider";
 import {
@@ -188,13 +187,6 @@ export async function handler(req: NextRequest) {
             reminder.booking.eventType?.team?.parentId ?? organizerOrganizationId ?? null
           );
 
-          const recipientEmail = getWorkflowRecipientEmail({
-            action: reminder.workflowStep.action || WorkflowActions.EMAIL_ADDRESS,
-            attendeeEmail: reminder.booking.attendees[0].email,
-            organizerEmail: reminder.booking.user?.email,
-            sendToEmail: reminder.workflowStep.sendTo,
-          });
-
           const variables: VariablesType = {
             eventName: reminder.booking.eventType?.title || "",
             organizerName: reminder.booking.user?.name || "",
@@ -207,12 +199,8 @@ export async function handler(req: NextRequest) {
             additionalNotes: reminder.booking.description,
             responses: responses,
             meetingUrl: bookingMetadataSchema.parse(reminder.booking.metadata || {})?.videoCallUrl,
-            cancelLink: `${bookerUrl}/booking/${reminder.booking.uid}?cancel=true${
-              recipientEmail ? `&cancelledBy=${encodeURIComponent(recipientEmail)}` : ""
-            }`,
-            rescheduleLink: `${bookerUrl}/reschedule/${reminder.booking.uid}${
-              recipientEmail ? `?rescheduledBy=${encodeURIComponent(recipientEmail)}` : ""
-            }`,
+            cancelLink: `${bookerUrl}/booking/${reminder.booking.uid}?cancel=true`,
+            rescheduleLink: `${bookerUrl}/reschedule/${reminder.booking.uid}`,
             ratingUrl: `${bookerUrl}/booking/${reminder.booking.uid}?rating`,
             noShowUrl: `${bookerUrl}/booking/${reminder.booking.uid}?noShow=true`,
             attendeeTimezone: reminder.booking.attendees[0].timeZone,

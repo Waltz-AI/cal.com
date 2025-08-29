@@ -98,6 +98,27 @@ export class BookingsRepository_2024_08_13 {
     });
   }
 
+  async getBookingWithExtraInfoForAddGuests(uid: string) {
+    const booking = await this.dbRead.prisma.booking.findFirst({
+      where: {
+        uid,
+      },
+      include: {
+        attendees: true,
+        eventType: true,
+        destinationCalendar: true,
+        references: true,
+        user: {
+          include: {
+            destinationCalendar: true,
+            credentials: true,
+          },
+        },
+      },
+    });
+    return booking;
+  }
+
   async getByUidWithAttendeesAndUserAndEvent(uid: string) {
     const booking = await this.dbRead.prisma.booking.findUnique({
       where: {
@@ -133,6 +154,7 @@ export class BookingsRepository_2024_08_13 {
         },
         user: true,
         eventType: true,
+        destinationCalendar: true,
       },
     });
   }
@@ -170,14 +192,33 @@ export class BookingsRepository_2024_08_13 {
     });
   }
 
-  async getByUidWithBookingReference(uid: string) {
+  async getBookingByUidWithNecessaryDetails(uid: string) {
     return this.dbRead.prisma.booking.findUnique({
       where: {
         uid,
       },
-      select: {
+      include: {
+        attendees: {
+          include: {
+            bookingSeat: true,
+          },
+        },
+        user: {
+          include: {
+            destinationCalendar: true,
+          },
+        },
+        eventType: true,
         references: true,
+        destinationCalendar: true,
       },
+    });
+  }
+
+  async updateBooking(id: number, data: Prisma.BookingUpdateInput) {
+    return this.dbWrite.prisma.booking.update({
+      where: { id },
+      data,
     });
   }
 }

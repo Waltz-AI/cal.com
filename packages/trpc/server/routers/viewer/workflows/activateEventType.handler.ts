@@ -164,9 +164,8 @@ export const activateEventTypeHandler = async ({ ctx, input }: ActivateEventType
     const remindersToDelete = await prisma.workflowReminder.findMany({
       where: {
         booking: {
-          eventTypeId: {
-            in: Array.from(activeOnEventTypes.keys()),
-          },
+          eventTypeId: eventTypeId,
+          userId: ctx.user.id,
         },
         workflowStepId: {
           in: eventTypeWorkflow.steps.map((step) => {

@@ -1,12 +1,10 @@
 import type { GetServerSidePropsContext } from "next";
 
 import { BookingRepository } from "@calcom/lib/server/repository/booking";
-import { prisma } from "@calcom/prisma";
 
 // change the type
 export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const bookingRepo = new BookingRepository(prisma);
-  const booking = await bookingRepo.findBookingByUid({
+  const booking = await BookingRepository.findBookingByUid({
     bookingUid: context.query.uid as string,
   });
 

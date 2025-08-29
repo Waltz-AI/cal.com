@@ -37,12 +37,10 @@ const getByUserIdHandler = async ({ input, ctx }: GetOptions) => {
   }
 
   // Ensure user is apart of the organization
-  const membership = await prisma.membership.findUnique({
+  const membership = await prisma.membership.findFirst({
     where: {
-      userId_teamId: {
-        userId: input.userId,
-        teamId: org.id,
-      },
+      userId: input.userId,
+      teamId: org.id,
     },
   });
 

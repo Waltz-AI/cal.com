@@ -7,14 +7,12 @@ import { createServer } from "http";
 // eslint-disable-next-line no-restricted-imports
 import type { Messages } from "mailhog";
 import { totp } from "otplib";
-import { v4 as uuid } from "uuid";
 
 import type { IntervalLimit } from "@calcom/lib/intervalLimits/intervalLimitSchema";
 import type { Prisma } from "@calcom/prisma/client";
 import { BookingStatus, SchedulingType } from "@calcom/prisma/enums";
 
 import type { createEmailsFixture } from "../fixtures/emails";
-import type { CreateUsersFixture } from "../fixtures/users";
 import type { Fixtures } from "./fixtures";
 
 type Request = IncomingMessage & { body?: unknown };
@@ -179,12 +177,10 @@ export async function expectSlotNotAllowedToBook(page: Page) {
   await expect(page.locator("[data-testid=slot-not-allowed-to-book]")).toBeVisible();
 }
 
-export const createNewUserEventType = async (page: Page, args: { eventTitle: string; username?: string }) => {
+export const createNewEventType = async (page: Page, args: { eventTitle: string }) => {
   await page.click("[data-testid=new-event-type]");
-  if (args.username) {
-    await page.getByRole("button", { name: args.username }).click();
-  }
-  await page.fill("[name=title]", args.eventTitle);
+  const eventTitle = args.eventTitle;
+  await page.fill("[name=title]", eventTitle);
   await page.fill("[name=length]", "10");
   await page.click("[type=submit]");
 
@@ -220,7 +216,7 @@ export async function setupManagedEvent({
 
 export const createNewSeatedEventType = async (page: Page, args: { eventTitle: string }) => {
   const eventTitle = args.eventTitle;
-  await createNewUserEventType(page, { eventTitle });
+  await createNewEventType(page, { eventTitle });
   await page.waitForSelector('[data-testid="event-title"]');
   await expect(page.getByTestId("vertical-tab-event_setup_tab_title")).toHaveAttribute(
     "aria-current",
@@ -566,27 +562,4 @@ export async function bookTeamEvent({
 export async function expectPageToBeNotFound({ page, url }: { page: Page; url: string }) {
   await page.goto(`${url}`);
   await expect(page.getByTestId(`404-page`)).toBeVisible();
-}
-
-export async function setupOrgMember(users: CreateUsersFixture) {
-  const orgRequestedSlug = `example-${uuid()}`;
-
-  const orgMember = await users.create(undefined, {
-    hasTeam: true,
-    isOrg: true,
-    hasSubteam: true,
-    isOrgVerified: true,
-    isDnsSetup: true,
-    orgRequestedSlug,
-    schedulingType: SchedulingType.ROUND_ROBIN,
-  });
-
-  const { team: org } = await orgMember.getOrgMembership();
-  const { team } = await orgMember.getFirstTeamMembership();
-  const teamEvent = await orgMember.getFirstTeamEvent(team.id);
-  const userEvent = orgMember.eventTypes[0];
-
-  await orgMember.apiLogin();
-
-  return { orgMember, org, team, teamEvent, userEvent };
 }

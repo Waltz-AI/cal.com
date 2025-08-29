@@ -34,7 +34,7 @@ export class OrganizationsBookingsController {
   constructor(private readonly bookingsService: BookingsService_2024_08_13) {}
 
   @Get("/")
-  @ApiOperation({ summary: "Get organization bookings" })
+  @ApiOperation({ summary: "Get Organization Bookings" })
   @Roles("ORG_ADMIN")
   @PlatformPlan("ESSENTIALS")
   @HttpCode(HttpStatus.OK)

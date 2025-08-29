@@ -5,7 +5,7 @@ import { GetBookingOutput_2024_04_15 } from "@/ee/bookings/2024-04-15/outputs/ge
 import { GetBookingsOutput_2024_04_15 } from "@/ee/bookings/2024-04-15/outputs/get-bookings.output";
 import { MarkNoShowOutput_2024_04_15 } from "@/ee/bookings/2024-04-15/outputs/mark-no-show.output";
 import { PlatformBookingsService } from "@/ee/bookings/shared/platform-bookings.service";
-import { sha256Hash, isApiKey, stripApiKey } from "@/lib/api-key";
+import { hashAPIKey, isApiKey, stripApiKey } from "@/lib/api-key";
 import { VERSION_2024_04_15, VERSION_2024_06_11, VERSION_2024_06_14 } from "@/lib/api-versions";
 import { ApiKeysRepository } from "@/modules/api-keys/api-keys-repository";
 import { GetUser } from "@/modules/auth/decorators/get-user/get-user.decorator";
@@ -21,20 +21,20 @@ import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
 import { UsersService } from "@/modules/users/services/users.service";
 import { UsersRepository, UserWithProfile } from "@/modules/users/users.repository";
 import {
-  Controller,
-  Post,
-  Logger,
-  Req,
-  InternalServerErrorException,
+  BadRequestException,
   Body,
+  Controller,
+  Get,
   Headers,
   HttpException,
-  Param,
-  Get,
-  Query,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
+  Param,
+  Post,
+  Query,
+  Req,
   UseGuards,
-  BadRequestException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ApiQuery, ApiExcludeController as DocsExcludeController } from "@nestjs/swagger";
@@ -43,27 +43,32 @@ import { Request } from "express";
 import { NextApiRequest } from "next/types";
 import { v4 as uuidv4 } from "uuid";
 
-import { X_CAL_CLIENT_ID, X_CAL_PLATFORM_EMBED } from "@calcom/platform-constants";
-import { BOOKING_READ, SUCCESS_STATUS, BOOKING_WRITE } from "@calcom/platform-constants";
 import {
-  handleNewRecurringBooking,
-  handleNewBooking,
+  BOOKING_READ,
+  BOOKING_WRITE,
+  SUCCESS_STATUS,
+  X_CAL_CLIENT_ID,
+  X_CAL_PLATFORM_EMBED,
+} from "@calcom/platform-constants";
+import {
   BookingResponse,
-  HttpError,
-  handleInstantMeeting,
-  handleMarkNoShow,
+  ErrorCode,
   getAllUserBookings,
+  getBookingForReschedule,
   getBookingInfo,
   handleCancelBooking,
-  getBookingForReschedule,
-  ErrorCode,
+  handleInstantMeeting,
+  handleMarkNoShow,
+  handleNewBooking,
+  handleNewRecurringBooking,
+  HttpError,
 } from "@calcom/platform-libraries";
 import {
-  GetBookingsInput_2024_04_15,
+  ApiResponse,
   CancelBookingInput_2024_04_15,
+  GetBookingsInput_2024_04_15,
   Status_2024_04_15,
 } from "@calcom/platform-types";
-import { ApiResponse } from "@calcom/platform-types";
 import { PrismaClient } from "@calcom/prisma";
 
 type BookingRequest = Request & {
@@ -77,7 +82,6 @@ type OAuthRequestParams = {
   platformBookingUrl: string;
   platformBookingLocation?: string;
   arePlatformEmailsEnabled: boolean;
-  areCalendarEventsEnabled: boolean;
 };
 
 const DEFAULT_PLATFORM_PARAMS = {
@@ -87,7 +91,6 @@ const DEFAULT_PLATFORM_PARAMS = {
   platformBookingUrl: "",
   arePlatformEmailsEnabled: false,
   platformBookingLocation: undefined,
-  areCalendarEventsEnabled: false,
 };
 
 @Controller({
@@ -137,13 +140,9 @@ export class BookingsController_2024_04_15 {
       },
     });
 
-    let nextCursor = null;
-    if (bookings.totalCount > (cursor ?? 0) + (limit ?? 10)) {
-      nextCursor = (cursor ?? 0) + (limit ?? 10);
-    }
     return {
       status: SUCCESS_STATUS,
-      data: { ...bookings, nextCursor },
+      data: bookings,
     };
   }
 
@@ -197,7 +196,6 @@ export class BookingsController_2024_04_15 {
         platformCancelUrl: bookingRequest.platformCancelUrl,
         platformBookingUrl: bookingRequest.platformBookingUrl,
         platformBookingLocation: bookingRequest.platformBookingLocation,
-        areCalendarEventsEnabled: bookingRequest.areCalendarEventsEnabled,
       });
       if (booking.userId && booking.uid && booking.startTime) {
         void (await this.billingService.increaseUsageByUserId(booking.userId, {
@@ -232,15 +230,6 @@ export class BookingsController_2024_04_15 {
     }
 
     if (bookingUid) {
-      const { bookingInfo } = await getBookingInfo(bookingUid);
-      if (!bookingInfo) {
-        throw new NotFoundException(`Booking with UID=${bookingUid} does not exist.`);
-      }
-      if (bookingInfo.status === "CANCELLED") {
-        throw new BadRequestException(
-          `Can't cancel booking with uid=${bookingUid} because it has been cancelled already. Please provide uid of a booking that is not cancelled.`
-        );
-      }
       try {
         req.body.uid = bookingUid;
         const bookingRequest = await this.createNextApiBookingRequest(req, oAuthClientId, undefined, isEmbed);
@@ -386,7 +375,7 @@ export class BookingsController_2024_04_15 {
       if (bearerToken) {
         if (isApiKey(bearerToken, this.config.get<string>("api.apiKeyPrefix") ?? "cal_")) {
           const strippedApiKey = stripApiKey(bearerToken, this.config.get<string>("api.keyPrefix"));
-          const apiKeyHash = sha256Hash(strippedApiKey);
+          const apiKeyHash = hashAPIKey(strippedApiKey);
           const keyData = await this.apiKeyRepository.getApiKeyFromHash(apiKeyHash);
           return keyData?.userId;
         } else {
@@ -440,7 +429,7 @@ export class BookingsController_2024_04_15 {
 
     if (isEmbed) {
       // embed should ignore oauth client settings and enable emails by default
-      return { ...res, arePlatformEmailsEnabled: true, areCalendarEventsEnabled: true };
+      return { ...res, arePlatformEmailsEnabled: true };
     }
 
     try {
@@ -452,7 +441,6 @@ export class BookingsController_2024_04_15 {
         res.platformRescheduleUrl = client.bookingRescheduleRedirectUri ?? "";
         res.platformBookingUrl = client.bookingRedirectUri ?? "";
         res.arePlatformEmailsEnabled = client.areEmailsEnabled ?? false;
-        res.areCalendarEventsEnabled = client.areCalendarEventsEnabled;
       }
       return res;
     } catch (err) {

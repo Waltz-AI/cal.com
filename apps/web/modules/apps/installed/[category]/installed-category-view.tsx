@@ -12,7 +12,6 @@ import type { BulkUpdatParams } from "@calcom/features/eventtypes/components/Bul
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { AppCategories } from "@calcom/prisma/enums";
 import { trpc } from "@calcom/trpc/react";
-import type { RouterOutputs } from "@calcom/trpc/react";
 import { Button } from "@calcom/ui/components/button";
 import { EmptyScreen } from "@calcom/ui/components/empty-screen";
 import type { Icon } from "@calcom/ui/components/icon";
@@ -182,11 +181,9 @@ type ModalState = {
 
 type PageProps = {
   category: AppCategories;
-  connectedCalendars: RouterOutputs["viewer"]["calendars"]["connectedCalendars"];
-  installedCalendars: RouterOutputs["viewer"]["apps"]["integrations"];
 };
 
-export default function InstalledApps({ category, connectedCalendars, installedCalendars }: PageProps) {
+export default function InstalledApps({ category }: PageProps) {
   const { t } = useLocale();
   const utils = trpc.useUtils();
   const categoryList: AppCategories[] = Object.values(AppCategories).filter((category) => {
@@ -236,12 +233,7 @@ export default function InstalledApps({ category, connectedCalendars, installedC
         {categoryList.includes(category) && (
           <IntegrationsContainer handleDisconnect={handleDisconnect} variant={category} />
         )}
-        {category === "calendar" && (
-          <CalendarListContainer
-            connectedCalendars={connectedCalendars}
-            installedCalendars={installedCalendars}
-          />
-        )}
+        {category === "calendar" && <CalendarListContainer />}
         {category === "other" && (
           <IntegrationsContainer
             handleDisconnect={handleDisconnect}

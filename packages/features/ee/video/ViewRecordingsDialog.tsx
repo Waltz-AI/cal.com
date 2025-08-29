@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -76,19 +74,21 @@ const useRecordingDownload = () => {
   useEffect(
     function refactorMeWithoutEffect() {
       if (data && data.download_link) {
-        window.open(data.download_link, "_blank", "noopener,noreferrer");
+        window.location.href = data.download_link;
       }
     },
     [data]
   );
   return {
     setRecordingId: (newRecordingId: string) => {
+      // may be a way to do this by default, but this is easy enough.
       if (recordingId === newRecordingId && data) {
-        window.open(data.download_link, "_blank", "noopener,noreferrer");
+        window.location.href = data.download_link;
       }
       if (!isFetching) {
         setRecordingId(newRecordingId);
       }
+      // assume it is still fetching, do nothing.
     },
     isFetching,
     recordingId,

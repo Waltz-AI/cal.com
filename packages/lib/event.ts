@@ -104,8 +104,6 @@ export function getEventName(eventNameObj: EventNameObjectType, forAttendeeView 
       }
 
       dynamicEventName = dynamicEventName.replace(`{${variable}}`, fieldValue || "");
-    } else {
-      dynamicEventName = dynamicEventName.replace(`{${variable}}`, "");
     }
   });
 
@@ -113,56 +111,18 @@ export function getEventName(eventNameObj: EventNameObjectType, forAttendeeView 
 }
 
 export function updateHostInEventName(eventName: string, oldHost: string, newHost: string) {
-  const oldParts = oldHost.trim().split(/\s+/);
-  const newParts = newHost.trim().split(/\s+/);
+  const oldHostFirstName = oldHost.split(" ")[0];
+  const newHostFirstName = newHost.split(" ")[0];
 
-  // Handle cases where names might have different number of parts
-  const oldFirst = oldParts[0];
-  const oldLast = oldParts.slice(1).join(" ");
-  const newFirst = newParts[0];
-  const newLast = newParts.slice(1).join(" ");
-
-  const formats = [
-    // Full name patterns (prioritize these first)
-    ...(oldLast
-      ? [
-          {
-            pattern: `${oldFirst}.${oldLast}`,
-            replacement: newLast ? `${newFirst}.${newLast}` : newFirst,
-          },
-          {
-            pattern: `${oldFirst}-${oldLast}`,
-            replacement: newLast ? `${newFirst}-${newLast}` : newFirst,
-          },
-          {
-            pattern: `${oldFirst}_${oldLast}`,
-            replacement: newLast ? `${newFirst}_${newLast}` : newFirst,
-          },
-          {
-            pattern: `${oldFirst} ${oldLast}`,
-            replacement: newLast ? `${newFirst} ${newLast}` : newFirst,
-          },
-        ]
-      : []),
-    // First name only (last to avoid partial matches)
-    {
-      pattern: oldFirst,
-      replacement: newFirst,
-    },
-  ];
+  if (!eventName.includes(oldHost) && !eventName.includes(oldHostFirstName)) {
+    return eventName;
+  }
 
   let updatedEventName = eventName;
 
-  for (const { pattern, replacement } of formats) {
-    // Escape special regex characters in the pattern
-    const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`\\b${escapedPattern}\\b`, "gi");
+  updatedEventName = updatedEventName.replace(oldHost, newHost);
 
-    if (regex.test(updatedEventName)) {
-      updatedEventName = updatedEventName.replace(regex, replacement);
-      return updatedEventName;
-    }
-  }
+  updatedEventName = updatedEventName.replace(oldHostFirstName, newHostFirstName);
 
   return updatedEventName;
 }

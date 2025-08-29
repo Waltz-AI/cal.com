@@ -3,7 +3,6 @@ import { Permissions } from "@/modules/auth/decorators/permissions/permissions.d
 import { OAuthClientRepository } from "@/modules/oauth-clients/oauth-client.repository";
 import { OAuthClientsOutputService } from "@/modules/oauth-clients/services/oauth-clients/oauth-clients-output.service";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
-import { TokensService } from "@/modules/tokens/tokens.service";
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Reflector } from "@nestjs/core";
@@ -18,7 +17,6 @@ export class PermissionsGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private tokensRepository: TokensRepository,
-    private tokensService: TokensService,
     private readonly config: ConfigService,
     private readonly oAuthClientRepository: OAuthClientRepository,
     private readonly oAuthClientsOutputService: OAuthClientsOutputService
@@ -37,10 +35,9 @@ export class PermissionsGuard implements CanActivate {
     const nextAuthToken = await getToken({ req: request, secret: nextAuthSecret });
     const oAuthClientId = request.params?.clientId || request.get(X_CAL_CLIENT_ID);
     const apiKey = bearerToken && isApiKey(bearerToken, this.config.get("api.apiKeyPrefix") ?? "cal_");
-    const isThirdPartyBearerToken = bearerToken && this.getDecodedThirdPartyAccessToken(bearerToken);
 
-    // only check permissions for accessTokens attached to platform oAuth Client or platform oAuth credentials, not for next token or api key or third party oauth client
-    if (nextAuthToken || apiKey || isThirdPartyBearerToken) {
+    // only check permissions for accessTokens attached to an oAuth Client or oAuth credentials, not for next token or api key
+    if (nextAuthToken || apiKey) {
       return true;
     }
 
@@ -89,9 +86,5 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException(`PermissionsGuard - no oAuth client found for client id=${id}`);
     }
     return oAuthClient;
-  }
-
-  getDecodedThirdPartyAccessToken(bearerToken: string) {
-    return this.tokensService.getDecodedThirdPartyAccessToken(bearerToken);
   }
 }

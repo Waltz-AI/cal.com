@@ -189,49 +189,6 @@ describe("Credential Sync Disabled", () => {
             expiry_date: 0,
           });
         });
-
-        test("`fetchNewTokenObject` is called if token is about to expire. Also, `updateTokenObject` is called with currentTokenObject and newTokenObject merged", async () => {
-          const userId = 1;
-          const invalidateTokenObject = vi.fn();
-          const expireAccessToken = vi.fn();
-          const updateTokenObject = vi.fn();
-          const currentTokenObject = getDummyTokenObject({
-            refresh_token: "REFRESH_TOKEN",
-            expiry_date: Date.now() - 2 * 1000,
-          });
-          const newTokenObjectInResponse = getDummyTokenObject();
-          const fetchNewTokenObject = vi
-            .fn()
-            .mockResolvedValue(generateJsonResponse({ json: newTokenObjectInResponse }));
-
-          const auth1 = new OAuthManager({
-            credentialSyncVariables: useCredentialSyncVariables,
-            resourceOwner: {
-              type: "user",
-              id: userId,
-            },
-            appSlug: "demo-app",
-            currentTokenObject: currentTokenObject,
-            fetchNewTokenObject,
-            isTokenObjectUnusable: async () => {
-              return null;
-            },
-            isAccessTokenUnusable: async () => {
-              return null;
-            },
-            invalidateTokenObject: invalidateTokenObject,
-            updateTokenObject: updateTokenObject,
-            expireAccessToken: expireAccessToken,
-          });
-          await auth1.getTokenObjectOrFetch();
-          expect(fetchNewTokenObject).toHaveBeenCalledWith({ refreshToken: "REFRESH_TOKEN" });
-          expect(updateTokenObject).toHaveBeenCalledWith({
-            ...currentTokenObject,
-            ...newTokenObjectInResponse,
-            // Consider the token as expired as newTokenObjectInResponse didn't have expiry
-            expiry_date: 0,
-          });
-        });
       });
 
       describe("checking using expires_in", () => {
@@ -328,7 +285,7 @@ describe("Credential Sync Disabled", () => {
               appSlug: "demo-app",
               currentTokenObject: getDummyTokenObject({
                 refresh_token: "REFRESH_TOKEN",
-                expires_in: Date.now() / 1000 + 10,
+                expires_in: Date.now() / 1000 + 5,
               }),
               fetchNewTokenObject,
               isTokenObjectUnusable: async () => {
@@ -431,7 +388,7 @@ describe("Credential Sync Disabled", () => {
         appSlug: "demo-app",
         currentTokenObject: getDummyTokenObject(),
         fetchNewTokenObject: async () => {
-          throw new Error("fetchNewTokenObject error");
+          throw new Error("testError");
         },
         isTokenObjectUnusable: async () => {
           return null;
@@ -446,7 +403,7 @@ describe("Credential Sync Disabled", () => {
 
       expect(async () => {
         return auth.getTokenObjectOrFetch();
-      }).rejects.toThrowError("fetchNewTokenObject error");
+      }).rejects.toThrowError("Invalid token response");
     });
 
     test("if fetchNewTokenObject throws error that's handled by isTokenObjectUnusable then auth.getTokenObjectOrFetch would still throw error but a different one as access_token won't be available", async () => {
@@ -464,7 +421,7 @@ describe("Credential Sync Disabled", () => {
         appSlug: "demo-app",
         currentTokenObject: getDummyTokenObject(),
         fetchNewTokenObject: async () => {
-          throw new Error("fetchNewTokenObject error");
+          throw new Error("testError");
         },
         isTokenObjectUnusable: async () => {
           return {
@@ -481,42 +438,7 @@ describe("Credential Sync Disabled", () => {
 
       expect(async () => {
         return auth.getTokenObjectOrFetch();
-      }).rejects.toThrowError("fetchNewTokenObject error");
-    });
-
-    test("when currentTokenObject is not set, but getCurrentTokenObject is set", async () => {
-      const userId = 1;
-      const getCurrentTokenObject = vi.fn().mockResolvedValue(getDummyTokenObject());
-      const auth = new OAuthManager({
-        credentialSyncVariables: useCredentialSyncVariables,
-        resourceOwner: {
-          type: "user",
-          id: userId,
-        },
-        appSlug: "demo-app",
-        isTokenExpiring: async () => {
-          return false;
-        },
-        isAccessTokenUnusable: async () => {
-          return null;
-        },
-        getCurrentTokenObject: getCurrentTokenObject,
-        fetchNewTokenObject: async () => {
-          return generateJsonResponse({ json: getDummyTokenObject() });
-        },
-        updateTokenObject: vi.fn(),
-        invalidateTokenObject: vi.fn(),
-        expireAccessToken: vi.fn(),
-        isTokenObjectUnusable: async () => {
-          return null;
-        },
-      });
-      const tokenObject = await auth.getTokenObjectOrFetch();
-      expect(getCurrentTokenObject).toHaveBeenCalled();
-      expect(tokenObject).toEqual({
-        token: expect.objectContaining(getDummyTokenObject()),
-        isUpdated: false,
-      });
+      }).rejects.toThrowError("Invalid token response");
     });
   });
 

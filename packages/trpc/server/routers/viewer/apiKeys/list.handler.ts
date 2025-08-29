@@ -1,4 +1,4 @@
-import { PrismaApiKeyRepository } from "@calcom/lib/server/repository/PrismaApiKeyRepository";
+import prisma from "@calcom/prisma";
 
 import type { TrpcSessionUser } from "../../../types";
 
@@ -9,5 +9,20 @@ type ListOptions = {
 };
 
 export const listHandler = async ({ ctx }: ListOptions) => {
-  return PrismaApiKeyRepository.findApiKeysFromUserId({ userId: ctx.user.id });
+  return await prisma.apiKey.findMany({
+    where: {
+      userId: ctx.user.id,
+      OR: [
+        {
+          NOT: {
+            appId: "zapier",
+          },
+        },
+        {
+          appId: null,
+        },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+  });
 };

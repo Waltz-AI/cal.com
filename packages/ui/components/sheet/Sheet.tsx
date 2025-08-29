@@ -1,5 +1,3 @@
-"use client";
-
 import * as SheetPrimitives from "@radix-ui/react-dialog";
 import * as React from "react";
 

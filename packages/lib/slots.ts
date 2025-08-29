@@ -69,7 +69,7 @@ function buildSlotsWithDateRanges({
 
   const startTimeWithMinNotice = dayjs.utc().add(minimumBookingNotice, "minute");
 
-  const slotBoundaries = new Map<number, true>();
+  const slotBoundaries = new Map<string, true>();
 
   orderedDateRanges.forEach((range) => {
     const dateYYYYMMDD = range.start.format("YYYY-MM-DD");
@@ -86,24 +86,23 @@ function buildSlotsWithDateRanges({
     slotStartTime = slotStartTime.add(offsetStart ?? 0, "minutes").tz(timeZone);
 
     // Find the nearest appropriate slot boundary if this time falls within an existing slot
-    const slotBoundariesValueArray = Array.from(slotBoundaries.keys());
-    if (slotBoundariesValueArray.length > 0) {
-      slotBoundariesValueArray.sort((a, b) => a - b);
+    const slotBoundariesArray = Array.from(slotBoundaries.keys()).map((t) => dayjs(t));
+    if (slotBoundariesArray.length > 0) {
+      slotBoundariesArray.sort((a, b) => a.valueOf() - b.valueOf());
 
       let prevBoundary = null;
-      for (let i = slotBoundariesValueArray.length - 1; i >= 0; i--) {
-        if (slotBoundariesValueArray[i] < slotStartTime.valueOf()) {
-          prevBoundary = slotBoundariesValueArray[i];
+      for (let i = slotBoundariesArray.length - 1; i >= 0; i--) {
+        if (slotBoundariesArray[i].isBefore(slotStartTime)) {
+          prevBoundary = slotBoundariesArray[i];
           break;
         }
       }
 
       if (prevBoundary) {
-        const prevBoundaryEnd = dayjs(prevBoundary).add(frequency + (offsetStart ?? 0), "minutes");
+        const prevBoundaryEnd = prevBoundary.add(frequency + (offsetStart ?? 0), "minutes");
         if (prevBoundaryEnd.isAfter(slotStartTime)) {
-          const dayjsPrevBoundary = dayjs(prevBoundary);
-          if (!dayjsPrevBoundary.isBefore(range.start)) {
-            slotStartTime = dayjsPrevBoundary;
+          if (!prevBoundary.isBefore(range.start)) {
+            slotStartTime = prevBoundary;
           } else {
             slotStartTime = prevBoundaryEnd;
           }
@@ -119,7 +118,7 @@ function buildSlotsWithDateRanges({
         continue;
       }
 
-      slotBoundaries.set(slotStartTime.valueOf(), true);
+      slotBoundaries.set(slotKey, true);
 
       const dateOutOfOfficeExists = datesOutOfOffice?.[dateYYYYMMDD];
       let slotData: {

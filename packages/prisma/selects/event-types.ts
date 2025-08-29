@@ -1,6 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
-export const baseEventTypeSelect = {
+export const baseEventTypeSelect = Prisma.validator<Prisma.EventTypeSelect>()({
   id: true,
   title: true,
   description: true,
@@ -12,13 +12,12 @@ export const baseEventTypeSelect = {
   price: true,
   currency: true,
   lockTimeZoneToggleOnBookingPage: true,
-  lockedTimeZone: true,
   requiresConfirmation: true,
   requiresBookerEmailVerification: true,
   canSendCalVideoTranscriptionEmails: true,
-} satisfies Prisma.EventTypeSelect;
+});
 
-export const bookEventTypeSelect = {
+export const bookEventTypeSelect = Prisma.validator<Prisma.EventTypeSelect>()({
   id: true,
   title: true,
   slug: true,
@@ -32,7 +31,6 @@ export const bookEventTypeSelect = {
   periodEndDate: true,
   recurringEvent: true,
   lockTimeZoneToggleOnBookingPage: true,
-  lockedTimeZone: true,
   requiresConfirmation: true,
   canSendCalVideoTranscriptionEmails: true,
   requiresBookerEmailVerification: true,
@@ -76,9 +74,9 @@ export const bookEventTypeSelect = {
       },
     },
   },
-} satisfies Prisma.EventTypeSelect;
+});
 
-export const availiblityPageEventTypeSelect = {
+export const availiblityPageEventTypeSelect = Prisma.validator<Prisma.EventTypeSelect>()({
   id: true,
   title: true,
   availability: true,
@@ -133,4 +131,4 @@ export const availiblityPageEventTypeSelect = {
       },
     },
   },
-} satisfies Prisma.EventTypeSelect;
+});

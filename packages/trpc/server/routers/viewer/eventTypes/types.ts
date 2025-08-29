@@ -11,15 +11,6 @@ import {
 } from "@calcom/prisma/zod-utils";
 import { eventTypeBookingFields } from "@calcom/prisma/zod-utils";
 
-const hashedLinkInputSchema = z
-  .object({
-    link: z.string(),
-    expiresAt: z.date().nullish(),
-    maxUsageCount: z.number().nullish(),
-    usageCount: z.number().nullish(),
-  })
-  .strict();
-
 const aiPhoneCallConfig = z
   .object({
     generalPrompt: z.string(),
@@ -33,19 +24,6 @@ const aiPhoneCallConfig = z
     templateType: templateTypeEnum,
   })
   .optional();
-
-const calVideoSettingsSchema = z
-  .object({
-    disableRecordingForGuests: z.boolean().nullish(),
-    disableRecordingForOrganizer: z.boolean().nullish(),
-    enableAutomaticTranscription: z.boolean().nullish(),
-    enableAutomaticRecordingForOrganizer: z.boolean().nullish(),
-    disableTranscriptionForGuests: z.boolean().nullish(),
-    disableTranscriptionForOrganizer: z.boolean().nullish(),
-    redirectUrlOnExit: z.string().url().nullish(),
-  })
-  .optional()
-  .nullable();
 
 const hostSchema = z.object({
   userId: z.number(),
@@ -73,7 +51,6 @@ const BaseEventTypeUpdateInput = _EventTypeModel
     instantMeetingParameters: z.array(z.string()),
     instantMeetingExpiryTimeOffsetInSeconds: z.number(),
     aiPhoneCallConfig,
-    calVideoSettings: calVideoSettingsSchema,
     calAiPhoneScript: z.string(),
     customInputs: z.array(customInputSchema),
     destinationCalendar: _DestinationCalendarModel
@@ -87,7 +64,7 @@ const BaseEventTypeUpdateInput = _EventTypeModel
     hosts: z.array(hostSchema),
     schedule: z.number().nullable(),
     instantMeetingSchedule: z.number().nullable(),
-    multiplePrivateLinks: z.array(z.union([z.string(), hashedLinkInputSchema])),
+    multiplePrivateLinks: z.array(z.string()),
     assignAllTeamMembers: z.boolean(),
     isRRWeightsEnabled: z.boolean(),
     metadata: EventTypeMetaDataSchema,

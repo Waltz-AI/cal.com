@@ -1,10 +1,10 @@
 ---
 description: The world's fastest calendar, beautifully designed for a remote world
 items:
-  - 1.avif
+  - 1.gif
   - 2.gif
-  - 3.avif
-  - 4.avif
+  - 3.gif
+  - 4.gif
 ---
 
 The world's fastest calendar, beautifully designed for a remote world

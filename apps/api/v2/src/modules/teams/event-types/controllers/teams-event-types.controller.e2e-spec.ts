@@ -61,48 +61,6 @@ describe("Organizations Event Types Endpoints", () => {
     let collectiveEventType: TeamEventTypeOutput_2024_06_14;
     let managedEventType: TeamEventTypeOutput_2024_06_14;
 
-    async function ensureManagedEventType(): Promise<TeamEventTypeOutput_2024_06_14> {
-      if (!managedEventType) {
-        const setupBody: CreateTeamEventTypeInput_2024_06_14 = {
-          title: `teams-event-types-managed-${randomString()}`,
-          slug: `teams-event-types-managed-${randomString()}`,
-          description: "Our team will review your codebase.",
-          lengthInMinutes: 60,
-          locations: [
-            {
-              type: "integration",
-              integration: "cal-video",
-            },
-          ],
-          schedulingType: "MANAGED",
-          hosts: [
-            {
-              userId: teamMember1.id,
-              mandatory: true,
-              priority: "high",
-            },
-            {
-              userId: teamMember2.id,
-              mandatory: false,
-              priority: "low",
-            },
-          ],
-        };
-
-        const setupResponse = await request(app.getHttpServer())
-          .post(`/v2/teams/${team.id}/event-types`)
-          .send(setupBody)
-          .expect(201);
-
-        const setupResponseBody: ApiSuccessResponse<TeamEventTypeOutput_2024_06_14[]> = setupResponse.body;
-        const responseTeamEvent = setupResponseBody.data.find((event) => event.teamId === team.id);
-        if (responseTeamEvent) {
-          managedEventType = responseTeamEvent;
-        }
-      }
-      return managedEventType;
-    }
-
     beforeAll(async () => {
       const moduleRef = await withApiAuth(
         userEmail,
@@ -127,13 +85,11 @@ describe("Organizations Event Types Endpoints", () => {
       teamMember1 = await userRepositoryFixture.create({
         email: teammate1Email,
         username: teammate1Email,
-        name: "alice",
       });
 
       teamMember2 = await userRepositoryFixture.create({
         email: teammate2Email,
         username: teammate2Email,
-        name: "bob",
       });
 
       falseTestUser = await userRepositoryFixture.create({
@@ -438,37 +394,15 @@ describe("Organizations Event Types Endpoints", () => {
           const teammate2EventTypes = await eventTypesRepositoryFixture.getAllUserEventTypes(teamMember2.id);
           const teamEventTypes = await eventTypesRepositoryFixture.getAllTeamEventTypes(team.id);
 
-          const teammate1ManagedEvents = teammate1EventTypes.filter((et) => et.title === body.title);
-          const teammate2ManagedEvents = teammate2EventTypes.filter((et) => et.title === body.title);
-          const managedTeamEvents = teamEventTypes.filter(
-            (eventType) => eventType.schedulingType === "MANAGED" && eventType.title === body.title
+          expect(teammate1EventTypes.length).toEqual(1);
+          expect(teammate1EventTypes[0].title).toEqual(body.title);
+          expect(teammate2EventTypes.length).toEqual(1);
+          expect(teamEventTypes.filter((eventType) => eventType.schedulingType === "MANAGED").length).toEqual(
+            1
           );
-
-          expect(teammate1ManagedEvents.length).toEqual(1);
-          expect(teammate1ManagedEvents[0].title).toEqual(body.title);
-          expect(teammate2ManagedEvents.length).toEqual(1);
-          expect(managedTeamEvents.length).toEqual(1);
 
           const responseTeamEvent = responseBody.data.find((event) => event.teamId === team.id);
           expect(responseTeamEvent).toBeDefined();
-          expect(responseTeamEvent?.hosts).toHaveLength(2);
-          expect(responseTeamEvent?.hosts).toEqual(
-            expect.arrayContaining([
-              {
-                userId: teamMember1.id,
-                name: teamMember1.name,
-                username: teamMember1.username,
-                avatarUrl: teamMember1.avatarUrl,
-              },
-              {
-                userId: teamMember2.id,
-                name: teamMember2.name,
-                username: teamMember2.username,
-                avatarUrl: teamMember2.avatarUrl,
-              },
-            ])
-          );
-
           if (!responseTeamEvent) {
             throw new Error("Team event not found");
           }
@@ -486,8 +420,6 @@ describe("Organizations Event Types Endpoints", () => {
     });
 
     it("managed team event types should be returned when fetching event types of users", async () => {
-      await ensureManagedEventType();
-
       return request(app.getHttpServer())
         .get(`/v2/event-types?username=${teamMember1.username}`)
         .set(CAL_API_VERSION_HEADER, VERSION_2024_06_14)
@@ -497,19 +429,16 @@ describe("Organizations Event Types Endpoints", () => {
           expect(responseBody.status).toEqual(SUCCESS_STATUS);
 
           const data = responseBody.data;
-          const managedEvents = data.filter((event) => event.slug === managedEventType.slug);
-          expect(managedEvents.length).toEqual(1);
-          expect(managedEvents[0].slug).toEqual(managedEventType.slug);
-          expect(managedEvents[0].ownerId).toEqual(teamMember1.id);
-          expect(managedEvents[0].id).not.toEqual(managedEventType.id);
+          expect(data.length).toEqual(1);
+          expect(data[0].slug).toEqual(managedEventType.slug);
+          expect(data[0].ownerId).toEqual(teamMember1.id);
+          expect(data[0].id).not.toEqual(managedEventType.id);
         });
     });
 
     it("managed team event type should be returned when fetching event types of users", async () => {
-      await ensureManagedEventType();
-
       return request(app.getHttpServer())
-        .get(`/v2/event-types?username=${teamMember1.username}&eventSlug=${managedEventType?.slug}`)
+        .get(`/v2/event-types?username=${teamMember1.username}&eventSlug=${managedEventType.slug}`)
         .set(CAL_API_VERSION_HEADER, VERSION_2024_06_14)
         .expect(200)
         .then(async (response) => {
@@ -517,11 +446,10 @@ describe("Organizations Event Types Endpoints", () => {
           expect(responseBody.status).toEqual(SUCCESS_STATUS);
 
           const data = responseBody.data;
-          const managedEventTypes = data.filter((et) => et.slug === managedEventType?.slug);
-          expect(managedEventTypes.length).toEqual(1);
-          expect(managedEventTypes[0].slug).toEqual(managedEventType?.slug);
-          expect(managedEventTypes[0].ownerId).toEqual(teamMember1.id);
-          expect(managedEventTypes[0].id).not.toEqual(managedEventType?.id);
+          expect(data.length).toEqual(1);
+          expect(data[0].slug).toEqual(managedEventType.slug);
+          expect(data[0].ownerId).toEqual(teamMember1.id);
+          expect(data[0].id).not.toEqual(managedEventType.id);
         });
     });
 
@@ -625,8 +553,6 @@ describe("Organizations Event Types Endpoints", () => {
     });
 
     it("should update managed event-type", async () => {
-      await ensureManagedEventType();
-
       const newTitle = `teams-event-types-managed-updated-${randomString()}`;
       const newHosts: UpdateTeamEventTypeInput_2024_06_14["hosts"] = [
         {
@@ -642,7 +568,7 @@ describe("Organizations Event Types Endpoints", () => {
       };
 
       return request(app.getHttpServer())
-        .patch(`/v2/teams/${team.id}/event-types/${managedEventType?.id}`)
+        .patch(`/v2/teams/${team.id}/event-types/${managedEventType.id}`)
         .send(body)
         .expect(200)
         .then(async (response) => {
@@ -686,14 +612,12 @@ describe("Organizations Event Types Endpoints", () => {
     });
 
     it("should assign all members to managed event-type", async () => {
-      await ensureManagedEventType();
-
       const body: UpdateTeamEventTypeInput_2024_06_14 = {
         assignAllTeamMembers: true,
       };
 
       return request(app.getHttpServer())
-        .patch(`/v2/teams/${team.id}/event-types/${managedEventType?.id}`)
+        .patch(`/v2/teams/${team.id}/event-types/${managedEventType.id}`)
         .send(body)
         .expect(200)
         .then(async (response) => {
@@ -752,10 +676,8 @@ describe("Organizations Event Types Endpoints", () => {
     });
 
     it("should delete managed event-type", async () => {
-      await ensureManagedEventType();
-
       return request(app.getHttpServer())
-        .delete(`/v2/teams/${team.id}/event-types/${managedEventType?.id}`)
+        .delete(`/v2/teams/${team.id}/event-types/${managedEventType.id}`)
         .expect(200);
     });
 

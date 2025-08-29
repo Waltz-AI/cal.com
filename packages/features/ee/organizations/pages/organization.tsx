@@ -6,7 +6,7 @@ import { MembershipRole } from "@calcom/prisma/client";
 
 export const getServerSideProps = async ({ req }: GetServerSidePropsContext) => {
   const prisma = await import("@calcom/prisma").then((mod) => mod.default);
-  const featuresRepository = new FeaturesRepository(prisma);
+  const featuresRepository = new FeaturesRepository();
   const organizationsEnabled = await featuresRepository.checkIfFeatureIsEnabledGlobally("organizations");
   // Check if organizations are enabled
   if (!organizationsEnabled) {
@@ -25,12 +25,10 @@ export const getServerSideProps = async ({ req }: GetServerSidePropsContext) => 
   }
 
   // Check if logged in user has OWNER/ADMIN role in organization
-  const membership = await prisma.membership.findUnique({
+  const membership = await prisma.membership.findFirst({
     where: {
-      userId_teamId: {
-        userId: session?.user.id,
-        teamId: session?.user.profile.organizationId,
-      },
+      userId: session?.user.id,
+      teamId: session?.user.profile.organizationId,
     },
     select: {
       role: true,

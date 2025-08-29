@@ -1,0 +1,23 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Enable corepack and set up yarn
+RUN corepack enable && corepack prepare yarn@3.4.1 --activate
+
+
+# Copy the rest of the application
+COPY . .
+
+
+# Initialize Yarn state
+RUN yarn install 
+
+# Expose port 3000
+EXPOSE 3000
+
+# Start the application
+CMD ["yarn", "dx"]

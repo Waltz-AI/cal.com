@@ -54,7 +54,6 @@ export class PlatformBookingsService {
         platformRescheduleUrl: oAuthClient.bookingRescheduleRedirectUri,
         platformBookingUrl: oAuthClient.bookingRedirectUri,
         arePlatformEmailsEnabled: oAuthClient.areEmailsEnabled,
-        areCalendarEventsEnabled: oAuthClient.areCalendarEventsEnabled,
       };
     }
 
@@ -79,7 +78,6 @@ export class PlatformBookingsService {
         platformRescheduleUrl: oAuthClient.bookingRescheduleRedirectUri,
         platformBookingUrl: oAuthClient.bookingRedirectUri,
         arePlatformEmailsEnabled: oAuthClient.areEmailsEnabled,
-        areCalendarEventsEnabled: oAuthClient.areCalendarEventsEnabled,
       };
     }
 

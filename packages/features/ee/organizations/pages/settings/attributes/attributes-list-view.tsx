@@ -19,7 +19,6 @@ import {
 import { Switch } from "@calcom/ui/components/form";
 import { Icon } from "@calcom/ui/components/icon";
 import { showToast } from "@calcom/ui/components/toast";
-import { revalidateAttributesList } from "@calcom/web/app/(use-page-wrapper)/settings/organizations/(org-user-only)/members/actions";
 
 import { DeleteAttributeModal } from "./DeleteAttributeModal";
 import { ListSkeleton } from "./ListSkeleton";
@@ -36,18 +35,15 @@ const TypeToLabelMap = {
 function AttributeItem({
   attribute,
   setAttributeToDelete,
-  permissions,
 }: {
   attribute: AttributeItemProps;
   setAttributeToDelete: Dispatch<SetStateAction<AttributeItemProps | undefined>>;
-  permissions: { canEdit: boolean; canDelete: boolean };
 }) {
   const { t } = useLocale();
   const [isEnabled, setIsEnabled] = useState(attribute.enabled);
   const mutation = trpc.viewer.attributes.toggleActive.useMutation({
     onSuccess: () => {
       showToast(t("attribute_updated_successfully"), "success");
-      revalidateAttributesList();
     },
     onError: (err) => {
       showToast(err.message, "error");
@@ -89,54 +85,43 @@ function AttributeItem({
         </p>
       </div>
       <div className="flex gap-4">
-        {permissions.canEdit && <Switch checked={isEnabled} onCheckedChange={handleToggle} />}
-        {(permissions.canEdit || permissions.canDelete) && (
-          <Dropdown modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
+        <Switch checked={isEnabled} onCheckedChange={handleToggle} />
+        <Dropdown modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="icon"
+              color="secondary"
+              StartIcon="ellipsis"
+              className="ltr:radix-state-open:rounded-r-md rtl:radix-state-open:rounded-l-md"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="min-w-[200px]">
+            <DropdownMenuItem>
+              <DropdownItem
                 type="button"
-                variant="icon"
-                color="secondary"
-                StartIcon="ellipsis"
-                className="ltr:radix-state-open:rounded-r-md rtl:radix-state-open:rounded-l-md"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="min-w-[200px]">
-              {permissions.canEdit && (
-                <DropdownMenuItem>
-                  <DropdownItem
-                    type="button"
-                    StartIcon="pencil"
-                    href={`/settings/organizations/attributes/${attribute.id}/edit`}>
-                    {t("edit")}
-                  </DropdownItem>
-                </DropdownMenuItem>
-              )}
-              {permissions.canDelete && (
-                <DropdownMenuItem>
-                  <DropdownItem
-                    type="button"
-                    StartIcon="trash-2"
-                    color="destructive"
-                    className="rounded-t-none"
-                    onClick={() => setAttributeToDelete(attribute)}>
-                    {t("delete")}
-                  </DropdownItem>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </Dropdown>
-        )}
+                StartIcon="pencil"
+                href={`/settings/organizations/attributes/${attribute.id}/edit`}>
+                {t("edit")}
+              </DropdownItem>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <DropdownItem
+                type="button"
+                StartIcon="trash-2"
+                color="destructive"
+                onClick={() => setAttributeToDelete(attribute)}>
+                {t("delete")}
+              </DropdownItem>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </Dropdown>
       </div>
     </ul>
   );
 }
 
-function OrganizationAttributesPage({
-  permissions,
-}: {
-  permissions: { canEdit: boolean; canDelete: boolean; canCreate: boolean };
-}) {
+function OrganizationAttributesPage() {
   const { t } = useLocale();
   const { data, isLoading } = trpc.viewer.attributes.list.useQuery();
   const [attributeToDelete, setAttributeToDelete] = useState<AttributeItemProps>();
@@ -161,20 +146,17 @@ function OrganizationAttributesPage({
                 <AttributeItem
                   setAttributeToDelete={setAttributeToDelete}
                   attribute={attribute}
-                  permissions={{ canEdit: permissions.canEdit, canDelete: permissions.canDelete }}
                   key={attribute.id}
                 />
               ))}
             </li>
-            {permissions.canCreate && (
-              <Button
-                className="w-fit"
-                StartIcon="plus"
-                color="minimal"
-                href="/settings/organizations/attributes/create">
-                {t("add")}
-              </Button>
-            )}
+            <Button
+              className="w-fit"
+              StartIcon="plus"
+              color="minimal"
+              href="/settings/organizations/attributes/create">
+              {t("add")}
+            </Button>
           </>
         ) : (
           <div className="flex w-full flex-col items-center justify-center p-14">
@@ -188,15 +170,13 @@ function OrganizationAttributesPage({
             <p className="text-emphasis mt-3 text-sm font-normal leading-none">
               {t("add_attributes_description")}
             </p>
-            {permissions.canCreate && (
-              <Button
-                className="mt-8"
-                StartIcon="plus"
-                color="secondary"
-                href="/settings/organizations/attributes/create">
-                {t("new_attribute")}
-              </Button>
-            )}
+            <Button
+              className="mt-8"
+              StartIcon="plus"
+              color="secondary"
+              href="/settings/organizations/attributes/create">
+              {t("new_attribute")}
+            </Button>
           </div>
         )}
       </div>

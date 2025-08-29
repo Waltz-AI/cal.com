@@ -33,8 +33,7 @@ test.describe("Reschedule Tests", async () => {
     await user.apiLogin();
     await page.goto("/bookings/upcoming");
 
-    // Click the ellipsis menu button to open the dropdown
-    await page.locator('[data-testid="booking-actions-dropdown"]').nth(0).click();
+    await page.locator('[data-testid="edit_booking"]').nth(0).click();
 
     await page.locator('[data-testid="reschedule_request"]').click();
 
@@ -76,8 +75,7 @@ test.describe("Reschedule Tests", async () => {
     await user.apiLogin();
     await page.goto("/bookings/past");
 
-    // Click the ellipsis menu button to open the dropdown
-    await page.locator('[data-testid="booking-actions-dropdown"]').nth(0).click();
+    await page.locator('[data-testid="edit_booking"]').nth(0).click();
 
     await expect(page.locator('[data-testid="reschedule"]')).toBeVisible();
     await expect(page.locator('[data-testid="reschedule_request"]')).toBeVisible();
@@ -93,14 +91,10 @@ test.describe("Reschedule Tests", async () => {
 
     await page.reload();
 
-    // Click the ellipsis menu button to open the dropdown
-    await page.locator('[data-testid="booking-actions-dropdown"]').nth(0).click();
+    await page.locator('[data-testid="edit_booking"]').nth(0).click();
 
-    // Check that the reschedule options are visible but disabled
-    await expect(page.locator('[data-testid="reschedule"]')).toBeVisible();
-    await expect(page.locator('[data-testid="reschedule_request"]')).toBeVisible();
-    await expect(page.locator('[data-testid="reschedule"]')).toBeDisabled();
-    await expect(page.locator('[data-testid="reschedule_request"]')).toBeDisabled();
+    await expect(page.locator('[data-testid="reschedule"]')).toBeHidden();
+    await expect(page.locator('[data-testid="reschedule_request"]')).toBeHidden();
   });
 
   test("Should display former time when rescheduling availability", async ({ page, users, bookings }) => {
@@ -393,62 +387,6 @@ test.describe("Reschedule Tests", async () => {
 
   test("Team Event Booking", () => {
     // It is tested in teams.e2e.ts
-  });
-
-  test("Should redirect to cancelled page when allowReschedulingCancelledBookings is false (default)", async ({
-    page,
-    users,
-    bookings,
-  }) => {
-    const user = await users.create();
-    const eventType = user.eventTypes[0];
-
-    await prisma.eventType.update({
-      where: {
-        id: eventType.id,
-      },
-      data: {
-        allowReschedulingCancelledBookings: false,
-      },
-    });
-
-    const booking = await bookings.create(user.id, user.username, eventType.id, {
-      status: BookingStatus.CANCELLED,
-    });
-
-    await page.goto(`/reschedule/${booking.uid}`);
-
-    expect(page.url()).not.toContain("rescheduleUid");
-    await expect(page.locator('[data-testid="cancelled-headline"]')).toBeVisible();
-  });
-
-  test("Should allow rescheduling when allowReschedulingCancelledBookings is true", async ({
-    page,
-    users,
-    bookings,
-  }) => {
-    const user = await users.create();
-    const eventType = user.eventTypes[0];
-
-    await prisma.eventType.update({
-      where: {
-        id: eventType.id,
-      },
-      data: {
-        allowReschedulingCancelledBookings: true,
-      },
-    });
-
-    const booking = await bookings.create(user.id, user.username, eventType.id, {
-      status: BookingStatus.CANCELLED,
-    });
-
-    await page.goto(`/reschedule/${booking.uid}`);
-
-    await selectFirstAvailableTimeSlotNextMonth(page);
-    await bookTimeSlot(page);
-
-    await expect(page.locator("[data-testid=success-page]")).toBeVisible();
   });
 
   test.describe("Organization", () => {

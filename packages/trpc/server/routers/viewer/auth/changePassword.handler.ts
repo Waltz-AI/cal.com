@@ -35,7 +35,7 @@ export const changePasswordHandler = async ({ input, ctx }: ChangePasswordOption
     }
   }
 
-  const currentPasswordQuery = await prisma.userPassword.findUnique({
+  const currentPasswordQuery = await prisma.userPassword.findFirst({
     where: { userId: user.id },
   });
 

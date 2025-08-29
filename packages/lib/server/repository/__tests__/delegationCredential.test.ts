@@ -234,8 +234,6 @@ describe("DelegationCredentialRepository", () => {
           domain: data.domain,
           enabled: data.enabled,
           createdAt: expect.any(Date),
-          lastEnabledAt: null,
-          lastDisabledAt: null,
           updatedAt: null,
           organizationId: data.organizationId,
           workspacePlatform: {
@@ -269,8 +267,6 @@ describe("DelegationCredentialRepository", () => {
           domain: created.domain,
           enabled: created.enabled,
           createdAt: expect.any(Date),
-          lastEnabledAt: created.lastEnabledAt,
-          lastDisabledAt: created.lastDisabledAt,
           updatedAt: null,
           organizationId: created.organizationId,
           workspacePlatform: {
@@ -299,8 +295,6 @@ describe("DelegationCredentialRepository", () => {
 
         expect(result).toEqual({
           id: created.id,
-          lastEnabledAt: created.lastEnabledAt,
-          lastDisabledAt: created.lastDisabledAt,
           domain: created.domain,
           enabled: created.enabled,
           createdAt: expect.any(Date),

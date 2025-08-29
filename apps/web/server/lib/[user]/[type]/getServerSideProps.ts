@@ -8,7 +8,6 @@ import { getBookingForReschedule, getBookingForSeatedEvent } from "@calcom/featu
 import { orgDomainConfig } from "@calcom/features/ee/organizations/lib/orgDomains";
 import type { getPublicEvent } from "@calcom/features/eventtypes/lib/getPublicEvent";
 import { getUsernameList } from "@calcom/lib/defaultEvents";
-import { shouldHideBrandingForUserEvent } from "@calcom/lib/hideBranding";
 import { EventRepository } from "@calcom/lib/server/repository/event";
 import { UserRepository } from "@calcom/lib/server/repository/user";
 import slugify from "@calcom/lib/slugify";
@@ -61,9 +60,7 @@ async function processReschedule({
     booking === null ||
     !booking.eventTypeId ||
     (booking?.eventTypeId === props.eventData?.id &&
-      (booking.status !== BookingStatus.CANCELLED ||
-        allowRescheduleForCancelledBooking ||
-        !!(props.eventData as any)?.allowReschedulingCancelledBookings))
+      (booking.status !== BookingStatus.CANCELLED || allowRescheduleForCancelledBooking))
   ) {
     props.booking = booking;
     props.rescheduleUid = Array.isArray(rescheduleUid) ? rescheduleUid[0] : rescheduleUid;
@@ -135,8 +132,7 @@ async function getDynamicGroupPageProps(context: GetServerSidePropsContext) {
     }
   }
 
-  const userRepo = new UserRepository(prisma);
-  const usersInOrgContext = await userRepo.findUsersByUsername({
+  const usersInOrgContext = await UserRepository.findUsersByUsername({
     usernameList: usernames,
     orgSlug: isValidOrgDomain ? currentOrgDomain : null,
   });
@@ -272,10 +268,7 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
     eventData: eventData,
     user: username,
     slug,
-    isBrandingHidden: shouldHideBrandingForUserEvent({
-      eventTypeId: eventData.id,
-      owner: user,
-    }),
+    isBrandingHidden: user?.hideBranding,
     isSEOIndexable: allowSEOIndexing,
     themeBasis: username,
     bookingUid: bookingUid ? `${bookingUid}` : null,

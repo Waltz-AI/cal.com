@@ -4,9 +4,9 @@ import { whereClauseForOrgWithSlugOrRequestedSlug } from "@calcom/ee/organizatio
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { getTranslation } from "@calcom/lib/server/i18n";
-import { availabilityUserSelect } from "@calcom/prisma";
-import type { PrismaClient } from "@calcom/prisma";
-import type { Prisma, User as UserType } from "@calcom/prisma/client";
+import prisma from "@calcom/prisma";
+import { Prisma } from "@calcom/prisma/client";
+import type { User as UserType } from "@calcom/prisma/client";
 import type { CreationSource } from "@calcom/prisma/enums";
 import { MembershipRole } from "@calcom/prisma/enums";
 import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
@@ -23,51 +23,11 @@ export type { UserWithLegacySelectedCalendars } from "../withSelectedCalendars";
 export { withSelectedCalendars };
 export type UserAdminTeams = number[];
 
-export type SessionUser = {
-  id: number;
-  username: string | null;
-  name: string | null;
-  email: string;
-  emailVerified: Date | null;
-  bio: string | null;
-  avatarUrl: string | null;
-  timeZone: string;
-  weekStart: string;
-  startTime: number;
-  endTime: number;
-  defaultScheduleId: number | null;
-  bufferTime: number;
-  theme: string | null;
-  appTheme: string | null;
-  createdDate: Date;
-  hideBranding: boolean;
-  twoFactorEnabled: boolean;
-  disableImpersonation: boolean;
-  identityProvider: string | null;
-  identityProviderId: string | null;
-  brandColor: string | null;
-  darkBrandColor: string | null;
-  movedToProfileId: number | null;
-  completedOnboarding: boolean;
-  destinationCalendar: any;
-  locale: string;
-  timeFormat: number | null;
-  trialEndsAt: Date | null;
-  metadata: any;
-  role: string;
-  allowDynamicBooking: boolean;
-  allowSEOIndexing: boolean;
-  receiveMonthlyDigestEmail: boolean;
-  profiles: any[];
-  allSelectedCalendars: any[];
-  userLevelSelectedCalendars: any[];
-};
-
 const log = logger.getSubLogger({ prefix: ["[repository/user]"] });
 
 export const ORGANIZATION_ID_UNKNOWN = "ORGANIZATION_ID_UNKNOWN";
 
-const teamSelect = {
+const teamSelect = Prisma.validator<Prisma.TeamSelect>()({
   id: true,
   name: true,
   slug: true,
@@ -76,9 +36,9 @@ const teamSelect = {
   organizationSettings: true,
   isOrganization: true,
   isPlatform: true,
-} satisfies Prisma.TeamSelect;
+});
 
-const userSelect = {
+const userSelect = Prisma.validator<Prisma.UserSelect>()({
   id: true,
   username: true,
   name: true,
@@ -117,13 +77,11 @@ const userSelect = {
   lastActiveAt: true,
   identityProvider: true,
   teams: true,
-} satisfies Prisma.UserSelect;
+});
 
 export class UserRepository {
-  constructor(private prismaClient: PrismaClient) {}
-
-  async findTeamsByUserId({ userId }: { userId: UserType["id"] }) {
-    const teamMemberships = await this.prismaClient.membership.findMany({
+  static async findTeamsByUserId({ userId }: { userId: UserType["id"] }) {
+    const teamMemberships = await prisma.membership.findMany({
       where: {
         userId: userId,
       },
@@ -145,8 +103,8 @@ export class UserRepository {
     };
   }
 
-  async findOrganizations({ userId }: { userId: UserType["id"] }) {
-    const { acceptedTeamMemberships } = await this.findTeamsByUserId({
+  static async findOrganizations({ userId }: { userId: UserType["id"] }) {
+    const { acceptedTeamMemberships } = await UserRepository.findTeamsByUserId({
       userId,
     });
 
@@ -164,14 +122,20 @@ export class UserRepository {
   /**
    * It is aware of the fact that a user can be part of multiple organizations.
    */
-  async findUsersByUsername({ orgSlug, usernameList }: { orgSlug: string | null; usernameList: string[] }) {
-    const { where, profiles } = await this._getWhereClauseForFindingUsersByUsername({
+  static async findUsersByUsername({
+    orgSlug,
+    usernameList,
+  }: {
+    orgSlug: string | null;
+    usernameList: string[];
+  }) {
+    const { where, profiles } = await UserRepository._getWhereClauseForFindingUsersByUsername({
       orgSlug,
       usernameList,
     });
 
     return (
-      await this.prismaClient.user.findMany({
+      await prisma.user.findMany({
         select: userSelect,
         where,
       })
@@ -197,9 +161,9 @@ export class UserRepository {
     });
   }
 
-  async findPlatformMembersByUsernames({ usernameList }: { usernameList: string[] }) {
+  static async findPlatformMembersByUsernames({ usernameList }: { usernameList: string[] }) {
     return (
-      await this.prismaClient.user.findMany({
+      await prisma.user.findMany({
         select: userSelect,
         where: {
           username: {
@@ -223,7 +187,7 @@ export class UserRepository {
     });
   }
 
-  async _getWhereClauseForFindingUsersByUsername({
+  static async _getWhereClauseForFindingUsersByUsername({
     orgSlug,
     usernameList,
   }: {
@@ -265,8 +229,8 @@ export class UserRepository {
     return { where, profiles };
   }
 
-  async findByEmail({ email }: { email: string }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async findByEmail({ email }: { email: string }) {
+    const user = await prisma.user.findUnique({
       where: {
         email: email.toLowerCase(),
       },
@@ -275,8 +239,8 @@ export class UserRepository {
     return user;
   }
 
-  async findByEmailAndIncludeProfilesAndPassword({ email }: { email: string }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async findByEmailAndIncludeProfilesAndPassword({ email }: { email: string }) {
+    const user = await prisma.user.findUnique({
       where: {
         email: email.toLowerCase(),
       },
@@ -316,8 +280,8 @@ export class UserRepository {
     };
   }
 
-  async findById({ id }: { id: number }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async findById({ id }: { id: number }) {
+    const user = await prisma.user.findUnique({
       where: {
         id,
       },
@@ -333,8 +297,8 @@ export class UserRepository {
     };
   }
 
-  async findByIds({ ids }: { ids: number[] }) {
-    return this.prismaClient.user.findMany({
+  static async findByIds({ ids }: { ids: number[] }) {
+    return prisma.user.findMany({
       where: {
         id: {
           in: ids,
@@ -344,20 +308,20 @@ export class UserRepository {
     });
   }
 
-  async findByIdOrThrow({ id }: { id: number }) {
-    const user = await this.findById({ id });
+  static async findByIdOrThrow({ id }: { id: number }) {
+    const user = await UserRepository.findById({ id });
     if (!user) {
       throw new Error(`User with id ${id} not found`);
     }
     return user;
   }
 
-  async findManyByOrganization({ organizationId }: { organizationId: number }) {
+  static async findManyByOrganization({ organizationId }: { organizationId: number }) {
     const profiles = await ProfileRepository.findManyForOrg({ organizationId });
     return profiles.map((profile) => profile.user);
   }
 
-  isAMemberOfOrganization({
+  static isAMemberOfOrganization({
     user,
     organizationId,
   }: {
@@ -367,7 +331,7 @@ export class UserRepository {
     return user.profiles.some((profile) => profile.organizationId === organizationId);
   }
 
-  async findIfAMemberOfSomeOrganization({ user }: { user: { id: number } }) {
+  static async findIfAMemberOfSomeOrganization({ user }: { user: { id: number } }) {
     return !!(
       await ProfileRepository.findManyForUser({
         id: user.id,
@@ -375,7 +339,7 @@ export class UserRepository {
     ).length;
   }
 
-  isMigratedToOrganization({
+  static isMigratedToOrganization({
     user,
   }: {
     user: {
@@ -387,11 +351,11 @@ export class UserRepository {
     return !!user.metadata?.migratedToOrgFrom;
   }
 
-  async isMovedToAProfile({ user }: { user: Pick<UserType, "movedToProfileId"> }) {
+  static async isMovedToAProfile({ user }: { user: Pick<UserType, "movedToProfileId"> }) {
     return !!user.movedToProfileId;
   }
 
-  async enrichUserWithTheProfile<T extends { username: string | null; id: number }>({
+  static async enrichUserWithTheProfile<T extends { username: string | null; id: number }>({
     user,
     upId,
   }: {
@@ -418,13 +382,7 @@ export class UserRepository {
    * 2. While dealing with a User that has been moved to a Profile i.e. he was invited to an organization when he was an existing user.
    * 3. We haven't added profileId to all the entities, so they aren't aware of which profile they belong to. So, we still mostly use this function to enrich the user with its profile.
    */
-  async enrichUserWithItsProfile<
-    T extends {
-      id: number;
-      username: string | null;
-      [key: string]: any;
-    }
-  >({
+  static async enrichUserWithItsProfile<T extends { id: number; username: string | null }>({
     user,
   }: {
     user: T;
@@ -462,7 +420,7 @@ export class UserRepository {
     };
   }
 
-  async enrichUsersWithTheirProfiles<T extends { id: number; username: string | null }>(
+  static async enrichUsersWithTheirProfiles<T extends { id: number; username: string | null }>(
     users: T[]
   ): Promise<
     Array<
@@ -521,7 +479,7 @@ export class UserRepository {
     });
   }
 
-  enrichUserWithItsProfileBuiltFromUser<T extends { id: number; username: string | null }>({
+  static enrichUserWithItsProfileBuiltFromUser<T extends { id: number; username: string | null }>({
     user,
   }: {
     user: T;
@@ -537,7 +495,7 @@ export class UserRepository {
     };
   }
 
-  async enrichEntityWithProfile<
+  static async enrichEntityWithProfile<
     T extends
       | {
           profile: {
@@ -596,7 +554,7 @@ export class UserRepository {
     }
   }
 
-  async updateWhereId({
+  static async updateWhereId({
     whereId,
     data,
   }: {
@@ -605,7 +563,7 @@ export class UserRepository {
       movedToProfileId?: number | null;
     };
   }) {
-    return this.prismaClient.user.update({
+    return prisma.user.update({
       where: {
         id: whereId,
       },
@@ -621,7 +579,7 @@ export class UserRepository {
     });
   }
 
-  async create(
+  static async create(
     data: Omit<Prisma.UserCreateInput, "password" | "organization" | "movedToProfile"> & {
       username: string;
       hashedPassword?: string;
@@ -637,7 +595,7 @@ export class UserRepository {
     const t = await getTranslation("en", "common");
     const availability = getAvailabilityFromSchedule(DEFAULT_SCHEDULE);
 
-    const user = await this.prismaClient.user.create({
+    const user = await prisma.user.create({
       data: {
         username,
         email: email,
@@ -677,8 +635,8 @@ export class UserRepository {
 
     return user;
   }
-  async getUserAdminTeams({ userId }: { userId: number }) {
-    return await this.prismaClient.user.findUnique({
+  static async getUserAdminTeams(userId: number) {
+    return prisma.user.findFirst({
       where: {
         id: userId,
       },
@@ -729,7 +687,7 @@ export class UserRepository {
       },
     });
   }
-  async isAdminOfTeamOrParentOrg({ userId, teamId }: { userId: number; teamId: number }) {
+  static async isAdminOfTeamOrParentOrg({ userId, teamId }: { userId: number; teamId: number }) {
     const membershipQuery = {
       members: {
         some: {
@@ -738,7 +696,7 @@ export class UserRepository {
         },
       },
     };
-    const teams = await this.prismaClient.team.findMany({
+    const teams = await prisma.team.findMany({
       where: {
         id: teamId,
         OR: [
@@ -754,13 +712,11 @@ export class UserRepository {
     });
     return !!teams.length;
   }
-  async isAdminOrOwnerOfTeam({ userId, teamId }: { userId: number; teamId: number }) {
-    const isAdminOrOwnerOfTeam = await this.prismaClient.membership.findUnique({
+  static async isAdminOrOwnerOfTeam({ userId, teamId }: { userId: number; teamId: number }) {
+    const isAdminOrOwnerOfTeam = await prisma.membership.findFirst({
       where: {
-        userId_teamId: {
-          userId,
-          teamId,
-        },
+        userId,
+        teamId,
         role: { in: [MembershipRole.ADMIN, MembershipRole.OWNER] },
         accepted: true,
       },
@@ -770,8 +726,8 @@ export class UserRepository {
     });
     return !!isAdminOrOwnerOfTeam;
   }
-  async getTimeZoneAndDefaultScheduleId({ userId }: { userId: number }) {
-    return await this.prismaClient.user.findUnique({
+  static async getTimeZoneAndDefaultScheduleId({ userId }: { userId: number }) {
+    return await prisma.user.findUnique({
       where: {
         id: userId,
       },
@@ -782,16 +738,16 @@ export class UserRepository {
     });
   }
 
-  async adminFindById(userId: number) {
-    return await this.prismaClient.user.findUniqueOrThrow({
+  static async adminFindById(userId: number) {
+    return await prisma.user.findUniqueOrThrow({
       where: {
         id: userId,
       },
     });
   }
 
-  async findUserTeams({ id }: { id: number }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async findUserTeams({ id }: { id: number }) {
+    const user = await prisma.user.findUnique({
       where: {
         id,
       },
@@ -818,10 +774,10 @@ export class UserRepository {
     return user;
   }
 
-  async updateAvatar({ id, avatarUrl }: { id: number; avatarUrl: string }) {
+  static async updateAvatar({ id, avatarUrl }: { id: number; avatarUrl: string }) {
     // Using updateMany here since if the user already has a profile it would throw an error
     // because no records were found to update the profile picture
-    await this.prismaClient.user.updateMany({
+    await prisma.user.updateMany({
       where: {
         id,
         avatarUrl: {
@@ -833,8 +789,8 @@ export class UserRepository {
       },
     });
   }
-  async findUserWithCredentials({ id }: { id: number }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async findUserWithCredentials({ id }: { id: number }) {
+    const user = await prisma.user.findUnique({
       where: {
         id,
       },
@@ -859,8 +815,8 @@ export class UserRepository {
     };
   }
 
-  async findUnlockedUserForSession({ userId }: { userId: number }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async findUnlockedUserForSession({ userId }: { userId: number }) {
+    const user = await prisma.user.findUnique({
       where: {
         id: userId,
         // Locked users can't login
@@ -896,8 +852,6 @@ export class UserRepository {
             eventTypeId: true,
             externalId: true,
             integration: true,
-            updatedAt: true,
-            googleChannelId: true,
           },
         },
         completedOnboarding: true,
@@ -921,8 +875,8 @@ export class UserRepository {
     return withSelectedCalendars(user);
   }
 
-  async getUserStats({ userId }: { userId: number }) {
-    const user = await this.prismaClient.user.findUnique({
+  static async getUserStats({ userId }: { userId: number }) {
+    const user = await prisma.user.findFirst({
       where: {
         id: userId,
       },
@@ -971,8 +925,8 @@ export class UserRepository {
     };
   }
 
-  async findManyByIdsIncludeDestinationAndSelectedCalendars({ ids }: { ids: number[] }) {
-    const users = await this.prismaClient.user.findMany({
+  static async findManyByIdsIncludeDestinationAndSelectedCalendars({ ids }: { ids: number[] }) {
+    const users = await prisma.user.findMany({
       where: { id: { in: ids } },
       include: {
         selectedCalendars: true,
@@ -982,7 +936,7 @@ export class UserRepository {
     return users.map(withSelectedCalendars);
   }
 
-  async updateStripeCustomerId({
+  static async updateStripeCustomerId({
     id,
     stripeCustomerId,
     existingMetadata,
@@ -991,41 +945,22 @@ export class UserRepository {
     stripeCustomerId: string;
     existingMetadata: z.infer<typeof userMetadata>;
   }) {
-    return this.prismaClient.user.update({
+    return prisma.user.update({
       where: { id },
       data: { metadata: { ...existingMetadata, stripeCustomerId } },
     });
   }
 
-  async updateWhitelistWorkflows({ id, whitelistWorkflows }: { id: number; whitelistWorkflows: boolean }) {
-    return this.prismaClient.user.update({
+  static async updateWhitelistWorkflows({
+    id,
+    whitelistWorkflows,
+  }: {
+    id: number;
+    whitelistWorkflows: boolean;
+  }) {
+    return prisma.user.update({
       where: { id },
       data: { whitelistWorkflows },
-    });
-  }
-
-  async findManyUsersForDynamicEventType({
-    currentOrgDomain,
-    usernameList,
-  }: {
-    currentOrgDomain: string | null;
-    usernameList: string[];
-  }) {
-    const { where } = await this._getWhereClauseForFindingUsersByUsername({
-      orgSlug: currentOrgDomain,
-      usernameList,
-    });
-
-    // TODO: Should be moved to UserRepository
-    return this.prismaClient.user.findMany({
-      where,
-      select: {
-        allowDynamicBooking: true,
-        ...availabilityUserSelect,
-        credentials: {
-          select: credentialForCalendarServiceSelect,
-        },
-      },
     });
   }
 }

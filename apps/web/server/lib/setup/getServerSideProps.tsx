@@ -1,9 +1,7 @@
 import type { GetServerSidePropsContext } from "next";
 
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
-import { LicenseKeySingleton } from "@calcom/features/ee/common/server/LicenseKeyService";
 import { getDeploymentKey } from "@calcom/features/ee/deployment/lib/getDeploymentKey";
-import { DeploymentRepository } from "@calcom/lib/server/repository/deployment";
 import prisma from "@calcom/prisma";
 import { UserPermissionRole } from "@calcom/prisma/enums";
 
@@ -19,12 +17,14 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
       notFound: true,
     } as const;
   }
-  // direct access is intentional.
-  const deploymentRepo = new DeploymentRepository(prisma);
-  const licenseKey = await deploymentRepo.getLicenseKeyWithId(1);
+
+  const deploymentKey = await prisma.deployment.findUnique({
+    where: { id: 1 },
+    select: { licenseKey: true },
+  });
 
   // Check existent CALCOM_LICENSE_KEY env var and account for it
-  if (!!process.env.CALCOM_LICENSE_KEY && !licenseKey) {
+  if (!!process.env.CALCOM_LICENSE_KEY && !deploymentKey?.licenseKey) {
     await prisma.deployment.upsert({
       where: { id: 1 },
       update: {
@@ -38,17 +38,12 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     });
   }
 
-  // Check if there's already a valid license using LicenseKeyService
-  const licenseKeyService = await LicenseKeySingleton.getInstance(deploymentRepo);
-  const hasValidLicense = await licenseKeyService.checkLicense();
-
-  const isFreeLicense = (await getDeploymentKey(deploymentRepo)) === "";
+  const isFreeLicense = (await getDeploymentKey(prisma)) === "";
 
   return {
     props: {
       isFreeLicense,
       userCount,
-      hasValidLicense,
     },
   };
 }

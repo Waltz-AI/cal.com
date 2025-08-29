@@ -73,11 +73,13 @@ ${getRichDescription(this.calEvent, this.t)}
   }
 
   protected getTimezone(): string {
-    return this.attendee.timeZone;
+    // Timezone is based on the first attendee in the attendee list
+    // as the first attendee is the one who created the booking
+    return this.calEvent.attendees[0].timeZone;
   }
 
   protected getLocale(): string {
-    return this.attendee.language.locale;
+    return this.calEvent.attendees[0].language.locale;
   }
 
   protected getInviteeStart(format: string) {

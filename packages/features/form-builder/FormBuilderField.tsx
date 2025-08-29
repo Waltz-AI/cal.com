@@ -4,7 +4,6 @@ import { Controller, useFormContext } from "react-hook-form";
 import type { z } from "zod";
 
 import { useLocale } from "@calcom/lib/hooks/useLocale";
-import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
 import classNames from "@calcom/ui/classNames";
 import { InfoBadge } from "@calcom/ui/components/badge";
 import { Label } from "@calcom/ui/components/form";
@@ -19,19 +18,6 @@ import {
   getFieldNameFromErrorMessage,
 } from "./useShouldBeDisabledDueToPrefill";
 import { getTranslatedConfig as getTranslatedVariantsConfig } from "./utils/variantsConfig";
-
-// helper to render markdown label safely
-const renderLabel = (field: Partial<RhfFormField>) => {
-  if (field.labelAsSafeHtml) {
-    return (
-      <span
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: markdownToSafeHTML(field.labelAsSafeHtml) }}
-      />
-    );
-  }
-  return <span>{field.label}</span>;
-};
 
 type RhfForm = {
   fields: z.infer<typeof fieldsSchema>;
@@ -169,7 +155,7 @@ const WithLabel = ({
           field.label && (
             <div className="mb-2 flex items-center">
               <Label className="!mb-0 flex items-center" htmlFor={htmlFor}>
-                {renderLabel(field)}
+                <span>{field.label}</span>
                 <span className="text-emphasis -mb-1 ml-1 text-sm font-medium leading-none">
                   {!readOnly && field.required ? "*" : ""}
                 </span>

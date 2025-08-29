@@ -43,7 +43,6 @@ enum locales {
   SR = "sr",
   SV = "sv",
   VI = "vi",
-  BN = "bn",
 }
 enum theme {
   DARK = "dark",

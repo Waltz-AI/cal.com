@@ -3,8 +3,7 @@ import "../../../../../tests/libs/__mocks__/prisma";
 import * as cache from "memory-cache";
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
-import { getDeploymentKey, getDeploymentSignatureToken } from "../../deployment/lib/getDeploymentKey";
-import { NoopLicenseKeyService } from "./LicenseKeyService";
+import { getDeploymentKey } from "../../deployment/lib/getDeploymentKey";
 import { createSignature, generateNonce } from "./private-api-utils";
 
 const baseUrl = "http://test-api.com";
@@ -40,7 +39,6 @@ vi.mock("memory-cache", () => ({
 
 vi.mock("../../deployment/lib/getDeploymentKey", () => ({
   getDeploymentKey: vi.fn(),
-  getDeploymentSignatureToken: vi.fn(),
 }));
 
 vi.mock("./private-api-utils", () => ({
@@ -55,7 +53,6 @@ const BASE_HEADERS = {
 describe("LicenseKeyService", () => {
   beforeEach(async () => {
     vi.mocked(getDeploymentKey).mockResolvedValue(licenseKey);
-    vi.mocked(getDeploymentSignatureToken).mockResolvedValue("mockSignatureToken");
   });
 
   afterEach(() => {
@@ -68,13 +65,6 @@ describe("LicenseKeyService", () => {
       const LicenseKeyService = await getLicenseKeyService();
       const service = await LicenseKeyService.create();
       expect(service).toBeInstanceOf(LicenseKeyService);
-    });
-
-    it("should create a NoopLicenseKeyService when no license key is provided", async () => {
-      vi.mocked(getDeploymentKey).mockResolvedValue("");
-      const LicenseKeyService = await getLicenseKeyService();
-      const service = await LicenseKeyService.create();
-      expect(service).toBeInstanceOf(NoopLicenseKeyService);
     });
   });
 

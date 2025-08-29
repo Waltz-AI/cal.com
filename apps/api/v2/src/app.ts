@@ -81,9 +81,5 @@ export const bootstrap = (app: NestExpressApplication): NestExpressApplication =
 
   app.use(cookieParser());
 
-  if (process?.env?.API_GLOBAL_PREFIX) {
-    app.setGlobalPrefix(process?.env?.API_GLOBAL_PREFIX);
-  }
-
   return app;
 };

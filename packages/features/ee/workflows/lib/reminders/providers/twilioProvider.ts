@@ -40,8 +40,6 @@ export const sendSMS = async ({
   userId,
   teamId,
   isWhatsapp = false,
-  contentSid,
-  contentVariables,
 }: {
   phoneNumber: string;
   body: string;
@@ -50,10 +48,8 @@ export const sendSMS = async ({
   userId?: number | null;
   teamId?: number | null;
   isWhatsapp?: boolean;
-  contentSid?: string;
-  contentVariables?: Record<string, string>;
 }) => {
-  log.silly("sendSMS", JSON.stringify({ phoneNumber, body, sender, userId, teamId, contentSid }));
+  log.silly("sendSMS", JSON.stringify({ phoneNumber, body, sender, userId, teamId }));
 
   const isSMSSendingLocked = await isLockedForSMSSending(userId, teamId);
 
@@ -84,32 +80,15 @@ export const sendSMS = async ({
     });
   }
 
-  if (isWhatsapp) {
-    const messageOptions: any = {
-      contentSid: contentSid,
-      to: getSMSNumber(phoneNumber, isWhatsapp),
-      from: getDefaultSender(isWhatsapp),
-      statusCallback: getStatusCallbackUrl(userId, teamId, bookingUid),
-      messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
-    };
+  const response = await twilio.messages.create({
+    body: body,
+    messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
+    to: getSMSNumber(phoneNumber, isWhatsapp),
+    from: isWhatsapp ? getDefaultSender(isWhatsapp) : sender || getDefaultSender(),
+    statusCallback: getStatusCallbackUrl(userId, teamId, bookingUid),
+  });
 
-    if (contentVariables) {
-      messageOptions.contentVariables = JSON.stringify(contentVariables);
-    }
-
-    const response = await twilio.messages.create(messageOptions);
-    return response;
-  } else {
-    const response = await twilio.messages.create({
-      body: body,
-      messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
-      to: getSMSNumber(phoneNumber),
-      from: sender || getDefaultSender(),
-      statusCallback: getStatusCallbackUrl(userId, teamId, bookingUid),
-    });
-
-    return response;
-  }
+  return response;
 };
 
 const getStatusCallbackUrl = (userId?: number | null, teamId?: number | null, bookingUid?: string | null) => {
@@ -129,8 +108,6 @@ export const scheduleSMS = async ({
   userId,
   teamId,
   isWhatsapp = false,
-  contentSid,
-  contentVariables,
 }: {
   phoneNumber: string;
   body: string;
@@ -140,8 +117,6 @@ export const scheduleSMS = async ({
   userId?: number | null;
   teamId?: number | null;
   isWhatsapp?: boolean;
-  contentSid?: string;
-  contentVariables?: Record<string, string>;
 }) => {
   const isSMSSendingLocked = await isLockedForSMSSending(userId, teamId);
 
@@ -170,37 +145,17 @@ export const scheduleSMS = async ({
       rateLimitingType: "smsMonth",
     });
   }
+  const response = await twilio.messages.create({
+    body,
+    messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
+    to: getSMSNumber(phoneNumber, isWhatsapp),
+    scheduleType: "fixed",
+    sendAt: scheduledDate,
+    from: isWhatsapp ? getDefaultSender(isWhatsapp) : sender || getDefaultSender(),
+    statusCallback: getStatusCallbackUrl(userId, teamId, bookingUid),
+  });
 
-  if (isWhatsapp) {
-    const messageOptions: any = {
-      contentSid: contentSid,
-      to: getSMSNumber(phoneNumber, isWhatsapp),
-      scheduleType: "fixed",
-      sendAt: scheduledDate,
-      from: getDefaultSender(isWhatsapp),
-      statusCallback: getStatusCallbackUrl(userId, teamId, bookingUid),
-      messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
-    };
-
-    if (contentVariables) {
-      messageOptions.contentVariables = JSON.stringify(contentVariables);
-    }
-
-    const response = await twilio.messages.create(messageOptions);
-    return response;
-  } else {
-    const response = await twilio.messages.create({
-      body,
-      messagingServiceSid: process.env.TWILIO_MESSAGING_SID,
-      to: getSMSNumber(phoneNumber),
-      scheduleType: "fixed",
-      sendAt: scheduledDate,
-      from: sender || getDefaultSender(),
-      statusCallback: getStatusCallbackUrl(userId, teamId, bookingUid),
-    });
-
-    return response;
-  }
+  return response;
 };
 
 export const cancelSMS = async (referenceId: string) => {
@@ -239,7 +194,7 @@ export const getMessageBody = async (referenceId: string) => {
 
 async function isLockedForSMSSending(userId?: number | null, teamId?: number | null) {
   if (teamId) {
-    const team = await prisma.team.findUnique({
+    const team = await prisma.team.findFirst({
       where: {
         id: teamId,
       },
@@ -269,7 +224,7 @@ async function isLockedForSMSSending(userId?: number | null, teamId?: number | n
       return true;
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: {
         id: userId,
       },
@@ -284,14 +239,11 @@ export async function getCountryCodeForNumber(phoneNumber: string) {
   return countryCode;
 }
 
-export async function getMessageInfo(smsSid: string) {
+export async function getPriceForSMS(smsSid: string) {
   const twilio = createTwilioClient();
   const message = await twilio.messages(smsSid).fetch();
-  const price = message.price ? Math.abs(parseFloat(message.price)) : null;
-
-  const numSegments = message.numSegments ? parseInt(message.numSegments) : null;
-
-  return { price, numSegments };
+  if (message.price == null || message.price === "null") return null;
+  return Math.abs(parseFloat(message.price));
 }
 
 export async function validateWebhookRequest({

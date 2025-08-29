@@ -1,5 +1,3 @@
-import { EMBED_DARK_THEME_CLASS } from "./constants";
-
 export const addAppCssVars = () => {
   const calElements = ["cal-floating-button", "cal-modal-box", "cal-inline"];
   try {
@@ -150,7 +148,7 @@ export const addAppCssVars = () => {
     --cal-brand-text: hsla(0, 0%, 100%, 1); /* white */
   }
   
-  ${calElements.map((element) => `${element}.${EMBED_DARK_THEME_CLASS}`).join(",")} {
+  ${calElements.map((element) => `${element}.dark`).join(",")} {
   /* Background Standard */
   --cal-bg-emphasis: hsla(0, 0%, 25%, 1); /* stone-700 */
   --cal-bg: hsla(0, 0%, 6%, 1); /* stone-950 */

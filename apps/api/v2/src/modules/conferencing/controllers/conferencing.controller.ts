@@ -48,6 +48,7 @@ export type OAuthCallbackState = {
   fromApp?: boolean;
   returnTo?: string;
   onErrorReturnTo?: string;
+  installGoogleVideo?: boolean;
 };
 
 @Controller({
@@ -87,11 +88,11 @@ export class ConferencingController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(ApiAuthGuard)
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
-  @ApiOperation({ summary: "Get OAuth conferencing app auth URL" })
+  @ApiOperation({ summary: "Get OAuth conferencing app auth url" })
   @ApiParam({
     name: "app",
     description: "Conferencing application type",
-    enum: [ZOOM, OFFICE_365_VIDEO],
+    enum: [GOOGLE_MEET, ZOOM, OFFICE_365_VIDEO],
     required: true,
   })
   async redirect(
@@ -109,6 +110,7 @@ export class ConferencingController {
       onErrorReturnTo: onErrorReturnTo ?? origin,
       fromApp: false,
       accessToken,
+      installGoogleVideo: app === GOOGLE_MEET,
     };
 
     const credential = await this.conferencingService.generateOAuthUrl(app, state);
@@ -130,11 +132,11 @@ export class ConferencingController {
   @Get("/:app/oauth/callback")
   @UseGuards()
   @Redirect(undefined, 301)
-  @ApiOperation({ summary: "Conferencing app OAuth callback" })
+  @ApiOperation({ summary: "conferencing apps oauths callback" })
   @ApiParam({
     name: "app",
     description: "Conferencing application type",
-    enum: [ZOOM, OFFICE_365_VIDEO],
+    enum: [GOOGLE_MEET, ZOOM, OFFICE_365_VIDEO],
     required: true,
   })
   async save(

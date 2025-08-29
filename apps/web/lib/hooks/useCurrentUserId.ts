@@ -1,4 +1,4 @@
-import useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
+import useMeQuery from "./useMeQuery";
 
 export const useCurrentUserId = () => {
   const query = useMeQuery();

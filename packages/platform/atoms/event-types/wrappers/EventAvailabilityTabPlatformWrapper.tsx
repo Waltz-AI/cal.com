@@ -6,7 +6,8 @@ import type { EventTypeSetup, FormValues } from "@calcom/features/eventtypes/lib
 import type { User } from "@calcom/prisma/client";
 
 import type { Availability } from "../../availability/AvailabilitySettings";
-import { useAtomSchedule } from "../../hooks/schedules/useAtomSchedule";
+import { transformApiScheduleForAtom } from "../../availability/atom-api-transformers/transformApiScheduleForAtom";
+import { useSchedule } from "../../hooks/schedules/useSchedule";
 import { useSchedules } from "../../hooks/schedules/useSchedules";
 import { useTeamMembers } from "../../hooks/teams/useTeamMembers";
 import { useAtomHostSchedules } from "../hooks/useAtomHostSchedules";
@@ -27,10 +28,13 @@ const EventAvailabilityTabPlatformWrapper = ({
   const formMethods = useFormContext<FormValues>();
   const scheduleId = formMethods.watch("schedule");
 
-  const { isLoading: isSchedulePending, data: atomSchedule } = useAtomSchedule(scheduleId?.toString());
+  const { isLoading: isSchedulePending, data: scheduleQueryData } = useSchedule(
+    scheduleId || user?.defaultScheduleId || undefined
+  );
 
   const { data: schedulesQueryData, isLoading: isSchedulesPending } = useSchedules();
 
+  const atomSchedule = transformApiScheduleForAtom(user, scheduleQueryData, schedulesQueryData?.length || 0);
   const hostSchedulesQuery = useAtomHostSchedules;
   const { data: teamMembers } = useTeamMembers({ teamId });
 

@@ -39,8 +39,7 @@ export default function Authorize() {
     }
   );
 
-  const { data, isPending: isPendingProfiles } =
-    trpc.viewer.loggedInViewerRouter.teamsAndUserProfilesQuery.useQuery();
+  const { data, isPending: isPendingProfiles } = trpc.viewer.teamsAndUserProfilesQuery.useQuery();
 
   const generateAuthCodeMutation = trpc.viewer.oAuth.generateAuthCode.useMutation({
     onSuccess: (data) => {

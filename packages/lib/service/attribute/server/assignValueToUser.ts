@@ -2,8 +2,8 @@ import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import prisma from "@calcom/prisma";
 
-import { PrismaAttributeOptionRepository } from "../../../server/repository/PrismaAttributeOptionRepository";
-import { PrismaAttributeRepository } from "../../../server/repository/PrismaAttributeRepository";
+import { AttributeRepository } from "../../../server/repository/attribute";
+import { AttributeOptionRepository } from "../../../server/repository/attributeOption";
 import { MembershipRepository } from "../../../server/repository/membership";
 import type { AttributeId, AttributeName, BulkAttributeAssigner, AttributeOptionAssignment } from "../types";
 import {
@@ -37,7 +37,7 @@ const findAttributesByName = async ({
   orgId: number;
   attributeNames: AttributeName[];
 }) => {
-  const attributesFromDb = await PrismaAttributeRepository.findManyByNamesAndOrgIdIncludeOptions({
+  const attributesFromDb = await AttributeRepository.findManyByNamesAndOrgIdIncludeOptions({
     attributeNames,
     orgId,
   });
@@ -325,13 +325,13 @@ const createMissingOptionsAndReturnAlongWithExisting = async <
     ),
   });
 
-  await PrismaAttributeOptionRepository.createMany({
+  await AttributeOptionRepository.createMany({
     createManyInput: attributeOptionCreateManyInput,
   });
 
   // We need fetch all the attribute options to ensure that we have the newly created options as well.
   const allAttributeOptions = (
-    await PrismaAttributeOptionRepository.findMany({
+    await AttributeOptionRepository.findMany({
       orgId,
     })
   ).map((attributeOption) => ({
@@ -418,7 +418,7 @@ export const assignValueToUserInOrgBulk = async ({
   attributeLabelToValueMap: AttributeLabelToValueMap;
   updater: BulkAttributeAssigner;
 }) => {
-  const membership = await MembershipRepository.findUniqueByUserIdAndTeamId({ userId, teamId: orgId });
+  const membership = await MembershipRepository.findFirstByUserIdAndTeamId({ userId, teamId: orgId });
   const defaultReturn = { numOfAttributeOptionsSet: 0, numOfAttributeOptionsDeleted: 0 };
   if (!membership) {
     console.error(`User ${userId} not a member of org ${orgId}, not assigning attribute options`);

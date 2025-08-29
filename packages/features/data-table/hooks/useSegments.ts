@@ -5,7 +5,7 @@ import { useCallback, useMemo, useEffect } from "react";
 import { trpc } from "@calcom/trpc/react";
 
 import { recalculateDateRange } from "../lib/dateRange";
-import { type UseSegments } from "../lib/types";
+import { ZSegmentStorage, type UseSegments } from "../lib/types";
 import { isDateRangeFilterValue } from "../lib/utils";
 
 export const useSegments: UseSegments = ({
@@ -26,26 +26,15 @@ export const useSegments: UseSegments = ({
   setPageSize,
   setPageIndex,
   setSearchTerm,
-  segments: providedSegments,
-  preferredSegmentId,
 }) => {
-  const { data: rawSegments, isFetching: isFetchingSegments } = trpc.viewer.filterSegments.list.useQuery(
-    {
-      tableIdentifier,
-    },
-    {
-      enabled: !providedSegments, // Only fetch if segments are not provided
-    }
-  );
-
-  const { mutate: setPreference } = trpc.viewer.filterSegments.setPreference.useMutation();
+  const { data: rawSegments, isFetching: isFetchingSegments } = trpc.viewer.filterSegments.list.useQuery({
+    tableIdentifier,
+  });
 
   // Recalculate date ranges based on the current timestamp
   const segments = useMemo(() => {
-    const segmentsSource = providedSegments || rawSegments?.segments;
-    if (!segmentsSource) return [];
-
-    return segmentsSource.map((segment) => ({
+    if (!rawSegments) return [];
+    return rawSegments.map((segment) => ({
       ...segment,
       activeFilters: segment.activeFilters.map((filter) => {
         if (isDateRangeFilterValue(filter.v)) {
@@ -57,11 +46,12 @@ export const useSegments: UseSegments = ({
         return filter;
       }),
     }));
-  }, [rawSegments, providedSegments]);
+  }, [rawSegments]);
 
-  const selectedSegment = useMemo(() => {
-    return segments?.find((segment) => segment.id === segmentId);
-  }, [segments, segmentId]);
+  const selectedSegment = useMemo(
+    () => segments?.find((segment) => segment.id === segmentId),
+    [segments, segmentId]
+  );
 
   useEffect(() => {
     if (segments && segmentId > 0 && !isFetchingSegments) {
@@ -75,16 +65,16 @@ export const useSegments: UseSegments = ({
     }
   }, [segments, segmentId, setSegmentId, isFetchingSegments]);
 
-  const memoizedPreferredSegmentId = useMemo(
-    () => preferredSegmentId ?? rawSegments?.preferredSegmentId,
-    [preferredSegmentId, rawSegments]
-  );
-
   useEffect(() => {
-    if (memoizedPreferredSegmentId) {
-      setSegmentId(memoizedPreferredSegmentId);
+    // this hook doesn't include segmentId in the dependency array
+    // because we want to only run this once, when the component mounts
+    if (segmentId === -1) {
+      const segments = getSegmentsFromLocalStorage();
+      if (segments[tableIdentifier]) {
+        setSegmentId(segments[tableIdentifier].segmentId);
+      }
     }
-  }, [memoizedPreferredSegmentId, setSegmentId]);
+  }, [tableIdentifier, setSegmentId]);
 
   useEffect(() => {
     if (selectedSegment) {
@@ -144,12 +134,9 @@ export const useSegments: UseSegments = ({
   const setAndPersistSegmentId = useCallback(
     (segmentId: number | null) => {
       setSegmentId(segmentId);
-      setPreference({
-        tableIdentifier,
-        segmentId,
-      });
+      saveSegmentToLocalStorage({ tableIdentifier, segmentId });
     },
-    [tableIdentifier, setSegmentId, setPreference]
+    [tableIdentifier, setSegmentId]
   );
 
   return {
@@ -160,3 +147,29 @@ export const useSegments: UseSegments = ({
     isSegmentEnabled: true,
   };
 };
+
+const LOCAL_STORAGE_KEY = "data-table:segments";
+
+function getSegmentsFromLocalStorage() {
+  try {
+    return ZSegmentStorage.parse(JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) ?? "{}"));
+  } catch {
+    return {};
+  }
+}
+
+function saveSegmentToLocalStorage({
+  tableIdentifier,
+  segmentId,
+}: {
+  tableIdentifier: string;
+  segmentId: number | null;
+}) {
+  const segments = getSegmentsFromLocalStorage();
+  if (segmentId) {
+    segments[tableIdentifier] = { segmentId };
+  } else {
+    delete segments[tableIdentifier];
+  }
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(segments));
+}

@@ -34,6 +34,10 @@ export const ZTriggerFormSubmittedNoEventWebhookPayloadSchema = z.object({
     id: z.string(),
     name: z.string(),
     teamId: z.number().nullable(),
+    fields: z
+      .array(z.object({ id: z.string(), label: z.string() }).passthrough())
+      .nullable()
+      .default([]),
   }),
 });
 

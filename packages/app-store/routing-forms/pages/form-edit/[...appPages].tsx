@@ -18,15 +18,16 @@ import {
   MultiOptionInput,
 } from "@calcom/ui/components/form";
 import { Icon } from "@calcom/ui/components/icon";
-import { Tooltip } from "@calcom/ui/components/tooltip";
 
 import type { inferSSRProps } from "@lib/types/inferSSRProps";
 
-import SingleForm from "../../components/SingleForm";
-import type { getServerSidePropsForSingleFormView as getServerSideProps } from "../../components/getServerSidePropsSingleForm";
+import SingleForm, {
+  getServerSidePropsForSingleFormView as getServerSideProps,
+} from "../../components/SingleForm";
 import { FieldTypes } from "../../lib/FieldTypes";
 import type { RoutingFormWithResponseCount } from "../../types/types";
 
+export { getServerSideProps };
 type HookForm = UseFormReturn<RoutingFormWithResponseCount>;
 
 function Field({
@@ -37,7 +38,6 @@ function Field({
   moveUp,
   moveDown,
   appUrl,
-  disableTypeChange,
 }: {
   fieldIndex: number;
   hookForm: HookForm;
@@ -55,7 +55,6 @@ function Field({
     fn: () => void;
   };
   appUrl: string;
-  disableTypeChange: boolean;
 }) {
   const { t } = useLocale();
 
@@ -126,53 +125,32 @@ function Field({
               defaultValue={routerField?.type}
               render={({ field: { value, onChange } }) => {
                 const defaultValue = FieldTypes.find((fieldType) => fieldType.value === value);
-                if (disableTypeChange) {
-                  return (
-                    <div className="data-testid-field-type">
-                      <Label htmlFor="field-type-button">{t("type")}</Label>
-                      <Tooltip content={t("field_type_change_suggestion")}>
-                        <Button
-                          type="button"
-                          disabled
-                          color="secondary"
-                          className={classNames(
-                            "h-8 w-full justify-between text-left text-sm",
-                            !!router && "bg-subtle cursor-not-allowed"
-                          )}>
-                          <span className="text-default">{defaultValue?.label || "Select field type"}</span>
-                          <Icon name="chevron-down" className="text-default h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <SelectField
-                      maxMenuHeight={200}
-                      styles={{
-                        singleValue: (baseStyles) => ({
-                          ...baseStyles,
-                          fontSize: "14px",
-                        }),
-                        option: (baseStyles) => ({
-                          ...baseStyles,
-                          fontSize: "14px",
-                        }),
-                      }}
-                      label="Type"
-                      isDisabled={!!router}
-                      containerClassName="data-testid-field-type"
-                      options={FieldTypes}
-                      onChange={(option) => {
-                        if (!option) {
-                          return;
-                        }
-                        onChange(option.value);
-                      }}
-                      defaultValue={defaultValue}
-                    />
-                  );
-                }
+                return (
+                  <SelectField
+                    maxMenuHeight={200}
+                    styles={{
+                      singleValue: (baseStyles) => ({
+                        ...baseStyles,
+                        fontSize: "14px",
+                      }),
+                      option: (baseStyles) => ({
+                        ...baseStyles,
+                        fontSize: "14px",
+                      }),
+                    }}
+                    label="Type"
+                    isDisabled={!!router}
+                    containerClassName="data-testid-field-type"
+                    options={FieldTypes}
+                    onChange={(option) => {
+                      if (!option) {
+                        return;
+                      }
+                      onChange(option.value);
+                    }}
+                    defaultValue={defaultValue}
+                  />
+                );
               }}
             />
           </div>
@@ -237,7 +215,6 @@ const FormEdit = ({
   } = useFieldArray({
     control: hookForm.control,
     name: fieldsNamespace,
-    keyName: "_id",
   });
 
   const [animationRef] = useAutoAnimate<HTMLDivElement>();
@@ -261,15 +238,12 @@ const FormEdit = ({
     <div className="w-full py-4 lg:py-8">
       <div ref={animationRef} className="flex w-full flex-col rounded-md">
         {hookFormFields.map((field, key) => {
-          const existingField = Boolean((form.fields || []).find((f) => f.id === field.id));
-          const hasFormResponses = (form._count?.responses ?? 0) > 0;
           return (
             <Field
               appUrl={appUrl}
               fieldIndex={key}
               hookForm={hookForm}
               hookFieldNamespace={`${fieldsNamespace}.${key}`}
-              disableTypeChange={existingField && hasFormResponses}
               deleteField={{
                 check: () => hookFormFields.length > 1,
                 fn: () => {

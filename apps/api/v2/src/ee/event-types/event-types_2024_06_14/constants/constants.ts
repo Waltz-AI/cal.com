@@ -1,4 +1,4 @@
-import { OrganizerIntegrationLocation } from "@/ee/event-types/event-types_2024_06_14/transformers";
+import { OrganizerIntegrationLocation } from "@calcom/lib/event-types/transformers/internal/locations";
 
 type BaseEventType = {
   length: number;

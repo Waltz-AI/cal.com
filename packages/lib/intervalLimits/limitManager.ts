@@ -59,17 +59,6 @@ export default class LimitManager {
   }
 
   /**
-   * Merges busy times from another LimitManager
-   */
-  mergeBusyTimes(otherManager: LimitManager) {
-    otherManager.busyMap.forEach((busyTime, key) => {
-      if (!this.busyMap.has(key)) {
-        this.busyMap.set(key, busyTime);
-      }
-    });
-  }
-
-  /**
    * Returns all busy times
    */
   getBusyTimes() {

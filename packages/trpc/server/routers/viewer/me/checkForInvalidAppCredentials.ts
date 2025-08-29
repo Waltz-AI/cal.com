@@ -13,21 +13,24 @@ type checkInvalidAppCredentialsOptions = {
 export const checkInvalidAppCredentials = async ({ ctx }: checkInvalidAppCredentialsOptions) => {
   const userId = ctx.user.id;
 
-  // First get the teams where user is admin/owner
-  const userTeamIds = await prisma.membership.findMany({
-    where: {
-      userId: userId,
-      accepted: true,
-      role: { in: [MembershipRole.ADMIN, MembershipRole.OWNER] },
-    },
-    select: {
-      teamId: true,
-    },
-  });
-
   const apps = await prisma.credential.findMany({
     where: {
-      OR: [{ userId }, { teamId: { in: userTeamIds.map((membership) => membership.teamId) } }],
+      OR: [
+        {
+          userId: userId,
+        },
+        {
+          team: {
+            members: {
+              some: {
+                userId: userId,
+                accepted: true,
+                role: { in: [MembershipRole.ADMIN, MembershipRole.OWNER] },
+              },
+            },
+          },
+        },
+      ],
       invalid: true,
     },
     select: {

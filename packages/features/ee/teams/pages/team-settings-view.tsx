@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -21,12 +20,9 @@ import { Form } from "@calcom/ui/components/form";
 import { SettingsToggle } from "@calcom/ui/components/form";
 import { CheckboxField } from "@calcom/ui/components/form";
 import { showToast } from "@calcom/ui/components/toast";
-import { revalidateTeamDataCache } from "@calcom/web/app/(booking-page-wrapper)/team/[slug]/[type]/actions";
 
-import DisableTeamImpersonation from "../components/DisableTeamImpersonation";
 import { default as InternalNotePresetsView } from "../components/InternalNotePresetsView";
-import MakeTeamPrivateSwitch from "../components/MakeTeamPrivateSwitch";
-import RoundRobinSettings from "../components/RoundRobinSettings";
+import RoundRobinResetInterval from "../components/RoundRobinResetInterval";
 
 type ProfileViewProps = { team: RouterOutputs["viewer"]["teams"]["get"] };
 
@@ -56,13 +52,6 @@ const BookingLimitsView = ({ team }: ProfileViewProps) => {
         reset({
           bookingLimits: res.bookingLimits,
           includeManagedEventsInLimits: res.includeManagedEventsInLimits,
-        });
-      }
-      if (team?.slug) {
-        // Booking limits are enforced during slot generation, which relies on the same cached team data.
-        revalidateTeamDataCache({
-          teamSlug: team.slug,
-          orgSlug: team.parent?.slug ?? null,
         });
       }
       showToast(t("booking_limits_updated_successfully"), "success");
@@ -154,37 +143,6 @@ const BookingLimitsView = ({ team }: ProfileViewProps) => {
   );
 };
 
-const PrivacySettingsView = ({ team }: ProfileViewProps) => {
-  const session = useSession();
-  const isAdmin = team && checkAdminOrOwner(team.membership.role);
-  const isOrgAdminOrOwner = checkAdminOrOwner(session?.data?.user.org?.role);
-  const isInviteOpen = !team?.membership.accepted;
-  const { t } = useLocale();
-
-  return (
-    <>
-      <div className="mt-6">
-        {team && session.data && (
-          <DisableTeamImpersonation
-            teamId={team.id}
-            memberId={session.data.user.id}
-            disabled={isInviteOpen}
-          />
-        )}
-
-        {team && team.id && (isAdmin || isOrgAdminOrOwner) && (
-          <MakeTeamPrivateSwitch
-            isOrg={false}
-            teamId={team.id}
-            isPrivate={team.isPrivate ?? false}
-            disabled={isInviteOpen}
-          />
-        )}
-      </div>
-    </>
-  );
-};
-
 const TeamSettingsViewWrapper = () => {
   const router = useRouter();
   const params = useParamsWithFallback();
@@ -216,9 +174,8 @@ const TeamSettingsViewWrapper = () => {
   return (
     <>
       <BookingLimitsView team={team} />
-      <PrivacySettingsView team={team} />
       <InternalNotePresetsView team={team} />
-      <RoundRobinSettings team={team} />
+      <RoundRobinResetInterval team={team} />
     </>
   );
 };

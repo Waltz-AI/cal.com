@@ -54,23 +54,6 @@ import {
 } from "@calcom/platform-constants";
 import { ApiResponse, CalendarBusyTimesInput, CreateCalendarCredentialsInput } from "@calcom/platform-types";
 
-export interface CalendarState {
-  accessToken: string;
-  origin: string;
-  redir?: string;
-  isDryRun?: boolean;
-}
-
-const calendarStateSchema = z.object({
-  accessToken: z.string(),
-  origin: z.string(),
-  redir: z.string().optional(),
-  isDryRun: z
-    .string()
-    .optional()
-    .transform((val) => val === "true"),
-});
-
 @Controller({
   path: "/v2/calendars",
   version: API_VERSIONS_VALUES,
@@ -157,7 +140,7 @@ export class CalendarsController {
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @Get("/:calendar/connect")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Get OAuth connect URL" })
+  @ApiOperation({ summary: "Get oAuth connect URL" })
   @ApiQuery({
     name: "redir",
     required: false,
@@ -198,31 +181,35 @@ export class CalendarsController {
     @Query("code") code: string,
     @Param("calendar") calendar: string
   ): Promise<{ url: string }> {
-    let stateObj: CalendarState;
-
-    try {
-      // First try to parse as JSON
-      stateObj = JSON.parse(state) as CalendarState;
-    } catch (e) {
-      // If JSON parsing fails, try URL params
-      const stateParams = new URLSearchParams(state);
-
-      const parsedState = calendarStateSchema.parse({
+    // state params contains our user access token
+    const stateParams = new URLSearchParams(state);
+    const { accessToken, origin, redir, isDryRun } = z
+      .object({
+        accessToken: z.string(),
+        origin: z.string(),
+        redir: z.string().nullish().optional(),
+        isDryRun: z.string().nullish().optional(),
+      })
+      .parse({
         accessToken: stateParams.get("accessToken"),
         origin: stateParams.get("origin"),
-        redir: stateParams.get("redir") || undefined,
+        redir: stateParams.get("redir"),
         isDryRun: stateParams.get("isDryRun"),
       });
-
-      stateObj = parsedState;
-    }
-
-    const { accessToken, origin, redir, isDryRun } = stateObj;
     switch (calendar) {
       case OFFICE_365_CALENDAR:
-        return await this.outlookService.save(code, accessToken, origin, redir ?? "", !!isDryRun);
+        return await this.outlookService.save(code, accessToken, origin, redir ?? "", isDryRun === "true");
       case GOOGLE_CALENDAR:
-        return await this.googleCalendarService.save(code, accessToken, origin, redir ?? "", !!isDryRun);
+        const { url } = await this.googleCalendarService.save(
+          code,
+          accessToken,
+          origin,
+          redir ?? "",
+          isDryRun === "true"
+        );
+
+        return { url };
+
       default:
         throw new BadRequestException(
           "Invalid calendar type, available calendars are: ",

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { checkAdminOrOwner } from "@calcom/features/auth/lib/checkAdminOrOwner";
 import { TimezoneSelect } from "@calcom/features/components/timezone-select";
 import LicenseRequired from "@calcom/features/ee/common/components/LicenseRequired";
 import SectionBottomActions from "@calcom/features/settings/SectionBottomActions";
@@ -41,31 +42,22 @@ const SkeletonLoader = () => {
 
 interface GeneralViewProps {
   currentOrg: RouterOutputs["viewer"]["organizations"]["listCurrent"];
+  isAdminOrOwner: boolean;
   localeProp: string;
-
-  permissions: {
-    canRead: boolean;
-    canEdit: boolean;
-  };
 }
 
-const OrgGeneralView = ({
-  permissions,
-}: {
-  permissions: {
-    canRead: boolean;
-    canEdit: boolean;
-  };
-}) => {
+const OrgGeneralView = () => {
   const { t } = useLocale();
   const router = useRouter();
   const session = useSession();
+  const isAdminOrOwner = checkAdminOrOwner(session.data?.user?.org?.role);
 
   const {
     data: currentOrg,
     isPending,
     error,
   } = trpc.viewer.organizations.listCurrent.useQuery(undefined, {});
+  const { data: user } = trpc.viewer.me.get.useQuery();
 
   useEffect(
     function refactorMeWithoutEffect() {
@@ -85,22 +77,18 @@ const OrgGeneralView = ({
     <LicenseRequired>
       <GeneralView
         currentOrg={currentOrg}
-        localeProp={session.data?.user.locale ?? "en"}
-        permissions={permissions}
+        isAdminOrOwner={isAdminOrOwner}
+        localeProp={user?.locale ?? "en"}
       />
 
-      {permissions.canEdit && (
-        <>
-          <LockEventTypeSwitch currentOrg={currentOrg} />
-          <NoSlotsNotificationSwitch currentOrg={currentOrg} />
-          <DisablePhoneOnlySMSNotificationsSwitch currentOrg={currentOrg} />
-        </>
-      )}
+      <LockEventTypeSwitch currentOrg={currentOrg} isAdminOrOwner={!!isAdminOrOwner} />
+      <NoSlotsNotificationSwitch currentOrg={currentOrg} isAdminOrOwner={!!isAdminOrOwner} />
+      <DisablePhoneOnlySMSNotificationsSwitch currentOrg={currentOrg} isAdminOrOwner={!!isAdminOrOwner} />
     </LicenseRequired>
   );
 };
 
-const GeneralView = ({ currentOrg, permissions, localeProp }: GeneralViewProps) => {
+const GeneralView = ({ currentOrg, isAdminOrOwner, localeProp }: GeneralViewProps) => {
   const { t } = useLocale();
 
   const mutation = trpc.viewer.organizations.update.useMutation({
@@ -148,7 +136,7 @@ const GeneralView = ({ currentOrg, permissions, localeProp }: GeneralViewProps) 
     reset,
     getValues,
   } = formMethods;
-  const isDisabled = isSubmitting || !isDirty || !permissions.canEdit;
+  const isDisabled = isSubmitting || !isDirty || !isAdminOrOwner;
   return (
     <Form
       form={formMethods}
@@ -162,7 +150,7 @@ const GeneralView = ({ currentOrg, permissions, localeProp }: GeneralViewProps) 
       <div
         className={classNames(
           "border-subtle border-x border-y-0 px-4 py-8 sm:px-6",
-          !permissions.canEdit && "rounded-b-lg border-y"
+          !isAdminOrOwner && "rounded-b-lg border-y"
         )}>
         <Controller
           name="timeZone"
@@ -223,7 +211,7 @@ const GeneralView = ({ currentOrg, permissions, localeProp }: GeneralViewProps) 
         />
       </div>
 
-      {permissions?.canEdit && (
+      {isAdminOrOwner && (
         <SectionBottomActions align="end">
           <Button disabled={isDisabled} color="primary" type="submit">
             {t("update")}

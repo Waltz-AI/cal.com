@@ -58,6 +58,7 @@ export type EventLocationTypeFromApp = Ensure<
 export type EventLocationType = DefaultEventLocationType | EventLocationTypeFromApp;
 
 export const DailyLocationType = "integrations:daily";
+export const AttendeeInPersonType = "attendeeInPerson";
 
 export const MeetLocationType = "integrations:google:meet";
 

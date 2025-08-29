@@ -106,7 +106,7 @@ export const legacyListMembers = async ({ ctx, input }: ListMembersOptions) => {
 
   const enrichedMembers = await Promise.all(
     memberships.map(async (membership) =>
-      new UserRepository(prisma).enrichUserWithItsProfile({
+      UserRepository.enrichUserWithItsProfile({
         user: {
           ...membership.user,
           accepted: membership.accepted,

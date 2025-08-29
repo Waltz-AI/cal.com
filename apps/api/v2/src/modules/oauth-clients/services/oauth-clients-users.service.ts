@@ -133,10 +133,9 @@ export class OAuthClientUsersService {
   async updateOAuthClientUser(oAuthClientId: string, userId: number, body: UpdateManagedUserInput) {
     if (body.email) {
       const emailWithOAuthId = OAuthClientUsersService.getOAuthUserEmail(oAuthClientId, body.email);
-      body.email = emailWithOAuthId;
       const [emailUser, emailDomain] = emailWithOAuthId.split("@");
       const [domainName, TLD] = emailDomain.split(".");
-      const newUsername = slugify(`${emailUser}-${domainName}-${TLD}`);
+      const newUsername = body.email;
       await this.userRepository.updateUsername(userId, newUsername);
     }
 
@@ -144,10 +143,7 @@ export class OAuthClientUsersService {
   }
 
   static getOAuthUserEmail(oAuthClientId: string, userEmail: string) {
-    if (userEmail.includes(`+${oAuthClientId}@`)) {
-      return userEmail;
-    }
     const [username, emailDomain] = userEmail.split("@");
-    return `${username}+${oAuthClientId}@${emailDomain}`;
+    return `${username}@${emailDomain}`;
   }
 }

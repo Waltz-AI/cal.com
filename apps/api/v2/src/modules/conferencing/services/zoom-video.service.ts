@@ -1,8 +1,14 @@
+import { getEnv } from "@/env";
 import { AppsRepository } from "@/modules/apps/apps.repository";
 import { OAuthCallbackState } from "@/modules/conferencing/controllers/conferencing.controller";
 import { CredentialsRepository } from "@/modules/credentials/credentials.repository";
-import { BadRequestException, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -19,7 +25,7 @@ const zoomAppKeysSchema = z.object({
 @Injectable()
 export class ZoomVideoService {
   private logger = new Logger("ZoomVideoService");
-  private redirectUri = `${this.config.get("api.url")}/conferencing/${ZOOM}/oauth/callback`;
+  private redirectUri = `${getEnv("API_URL")}/conferencing/${ZOOM}/oauth/callback`;
 
   constructor(
     private readonly config: ConfigService,
@@ -52,7 +58,10 @@ export class ZoomVideoService {
       redirect_uri: this.redirectUri,
       state: state,
     };
-
+    this.logger.log("redirect_uri", this.redirectUri);
+    this.logger.log("params", params);
+    this.logger.log(`getEnv("API_URL")`, getEnv("API_URL"));
+    console.log(`getEnv("API_URL")`, getEnv("API_URL"));
     const query = stringify(params);
     const url = `https://zoom.us/oauth/authorize?${query}`;
     return { url };

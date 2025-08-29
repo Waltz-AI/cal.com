@@ -6,14 +6,13 @@ import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowE
 import getIP from "@calcom/lib/getIP";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
 import { CreationSource } from "@calcom/prisma/enums";
-import { piiHasher } from "@calcom/lib/server/PiiHasher";
 
 async function handler(req: NextApiRequest & { userId?: number }) {
   const userIp = getIP(req);
 
   await checkRateLimitAndThrowError({
     rateLimitingType: "core",
-    identifier: `instant.event-${piiHasher.hash(userIp)}`,
+    identifier: `instant.event-${userIp}`,
   });
 
   const session = await getServerSession({ req });

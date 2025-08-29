@@ -18,6 +18,7 @@ import { FormActionsProvider } from "./FormActions";
 import { InfoLostWarningDialog } from "./InfoLostWarningDialog";
 import { Header } from "./_components/Header";
 import { TestFormRenderer, type UptoDateForm } from "./_components/TestForm";
+import { getServerSidePropsForSingleFormView } from "./getServerSidePropsSingleForm";
 
 const BREAKPOINTS = {
   sm: 640,
@@ -243,3 +244,5 @@ export default function SingleFormWrapper({ form: _form, ...props }: SingleFormC
     </LicenseRequired>
   );
 }
+
+export { getServerSidePropsForSingleFormView };

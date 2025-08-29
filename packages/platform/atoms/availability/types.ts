@@ -20,22 +20,3 @@ export type AvailabilityFormValues = {
   timeZone: string;
   isDefault: boolean;
 };
-
-export type scheduleClassNames = {
-  schedule?: string;
-  scheduleDay?: string;
-  dayRanges?: string;
-  timeRangeField?: string;
-  labelAndSwitchContainer?: string;
-  scheduleContainer?: string;
-};
-
-export type AvailabilityFormValidationResult = {
-  isValid: boolean;
-  errors: Record<string, unknown>;
-};
-
-export interface AvailabilitySettingsFormRef {
-  validateForm: () => Promise<AvailabilityFormValidationResult>;
-  handleFormSubmit: () => void;
-}

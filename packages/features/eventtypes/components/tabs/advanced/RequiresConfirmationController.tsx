@@ -104,10 +104,9 @@ export default function RequiresConfirmationController({
               LockedIcon={requiresConfirmationLockedProps.LockedIcon}
               onCheckedChange={(val) => {
                 formMethods.setValue("requiresConfirmation", val, { shouldDirty: true });
-                // If we uncheck requires confirmation, we also uncheck these checkboxes
+                // If we uncheck requires confirmation, we also uncheck the "will block slot" checkbox
                 if (!val) {
                   formMethods.setValue("requiresConfirmationWillBlockSlot", false, { shouldDirty: true });
-                  formMethods.setValue("requiresConfirmationForFreeEmail", false, { shouldDirty: true });
                 }
                 onRequiresConfirmation(val);
               }}>
@@ -208,7 +207,7 @@ export default function RequiresConfirmationController({
                                           customClassNames?.conditionalConfirmationRadio?.timeUnitSelect
                                         }
                                         innerClassNames={{
-                                          control: "rounded-l-none max-h-4 px-3 bg-subtle py-1",
+                                          control: "rounded-l-none max-h-4 px-3 bg-subtle",
                                         }}
                                         onChange={(opt) => {
                                           setRequiresConfirmationSetup({

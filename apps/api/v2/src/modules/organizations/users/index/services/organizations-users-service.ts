@@ -71,6 +71,7 @@ export class OrganizationsUsersService {
     const usernameOrEmail = userCreateBody.username ? userCreateBody.username : userCreateBody.email;
 
     // Create new org user
+
     const createdUserCall = await createNewUsersConnectToOrgIfExists({
       invitations: [
         {
@@ -89,7 +90,6 @@ export class OrganizationsUsersService {
           autoAccept: userCreateBody.autoAccept,
         },
       },
-      language: "en",
     });
 
     const createdUser = createdUserCall[0];

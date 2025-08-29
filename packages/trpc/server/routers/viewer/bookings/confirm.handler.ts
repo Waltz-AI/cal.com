@@ -36,7 +36,7 @@ import type { TConfirmInputSchema } from "./confirm.schema";
 
 type ConfirmOptions = {
   ctx: {
-    user: Pick<NonNullable<TrpcSessionUser>, "id" | "email" | "username" | "role" | "destinationCalendar">;
+    user: NonNullable<TrpcSessionUser>;
   };
   input: TConfirmInputSchema;
 };

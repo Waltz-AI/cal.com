@@ -95,7 +95,7 @@ async function postHandler(request: NextRequest) {
       const userIdsFromTeams = team.members.map((u) => u.userId);
 
       // Booking Events
-      const whereConditional: Prisma.BookingTimeStatusDenormalizedWhereInput = {
+      const whereConditional: Prisma.BookingTimeStatusWhereInput = {
         OR: [
           {
             teamId: team.id,
@@ -122,7 +122,7 @@ async function postHandler(request: NextRequest) {
       EventData["Cancelled"] = countGroupedByStatus["cancelled"];
 
       // Most Booked Event Type
-      const bookingWhere: Prisma.BookingTimeStatusDenormalizedWhereInput = {
+      const bookingWhere: Prisma.BookingTimeStatusWhereInput = {
         createdAt: {
           gte: dayjs(firstDateOfMonth).startOf("day").toDate(),
           lte: dayjs(new Date()).endOf("day").toDate(),
@@ -141,7 +141,7 @@ async function postHandler(request: NextRequest) {
         ],
       };
 
-      const bookingsFromSelected = await prisma.bookingTimeStatusDenormalized.groupBy({
+      const bookingsFromSelected = await prisma.bookingTimeStatus.groupBy({
         by: ["eventTypeId"],
         where: bookingWhere,
         _count: {
@@ -234,7 +234,7 @@ async function postHandler(request: NextRequest) {
       });
 
       // Most booked members
-      const bookingsFromTeam = await prisma.bookingTimeStatusDenormalized.groupBy({
+      const bookingsFromTeam = await prisma.bookingTimeStatus.groupBy({
         by: ["userId"],
         where: bookingWhere,
         _count: {

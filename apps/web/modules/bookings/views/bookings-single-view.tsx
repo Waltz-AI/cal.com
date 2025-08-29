@@ -129,9 +129,7 @@ export default function Success(props: PageProps) {
     rescheduleLocation = bookingInfo.responses.location.optionValue;
   }
 
-  const parsed = bookingMetadataSchema.safeParse(bookingInfo?.metadata ?? null);
-  const parsedBookingMetadata = parsed.success ? parsed.data : null;
-
+  const parsedBookingMetadata = bookingMetadataSchema.parse(bookingInfo?.metadata || {});
   const bookingWithParsedMetadata = {
     ...bookingInfo,
     metadata: parsedBookingMetadata,
@@ -315,20 +313,17 @@ export default function Success(props: PageProps) {
         return t(`${titlePrefix}emailed_host_and_attendee${titleSuffix}`, {
           host,
           attendee,
-          interpolation: { escapeValue: false },
         });
       }
       if (isAttendee) {
         return t(`${titlePrefix}emailed_host_and_attendee${titleSuffix}`, {
           host,
           attendee,
-          interpolation: { escapeValue: false },
         });
       }
       return t(`${titlePrefix}emailed_host_and_attendee${titleSuffix}`, {
         host,
         attendee,
-        interpolation: { escapeValue: false },
       });
     }
     return t(`emailed_host_and_attendee${titleSuffix}`);
@@ -549,21 +544,13 @@ export default function Success(props: PageProps) {
                           </h4>
                         )}
 
-                      <div className="border-subtle text-default mt-8 grid grid-cols-3 gap-x-4 border-t pt-8 text-left rtl:text-right sm:gap-x-0">
+                      <div className="border-subtle text-default mt-8 grid grid-cols-3 border-t pt-8 text-left rtl:text-right">
                         {(isCancelled || reschedule) && cancellationReason && (
                           <>
                             <div className="font-medium">
                               {isCancelled ? t("reason") : t("reschedule_reason")}
                             </div>
                             <div className="col-span-2 mb-6 last:mb-0">{cancellationReason}</div>
-                          </>
-                        )}
-                        {isCancelled && bookingInfo?.cancelledBy && (
-                          <>
-                            <div className="font-medium">{t("cancelled_by")}</div>
-                            <div className="col-span-2 mb-6 last:mb-0">
-                              <p className="break-words">{bookingInfo?.cancelledBy}</p>
-                            </div>
                           </>
                         )}
                         {previousBooking && (
@@ -621,7 +608,7 @@ export default function Success(props: PageProps) {
                                     <Badge variant="blue">{t("Host")}</Badge>
                                   </div>
                                   {!bookingInfo.eventType?.hideOrganizerEmail && (
-                                    <p className="text-default" data-testid="booking-host-email">
+                                    <p className="text-default">
                                       {bookingInfo?.userPrimaryEmail ?? bookingInfo.user.email}
                                     </p>
                                   )}
@@ -1229,21 +1216,8 @@ function RecurringBookings({
             <div key={idx} className={classNames("mb-2", isCancelled ? "line-through" : "")}>
               {formatToLocalizedDate(dayjs.tz(dateStr, tz), language, "full", tz)}
               <br />
-              {formatToLocalizedTime({
-                date: dayjs(dateStr),
-                locale: language,
-                timeStyle: undefined,
-                hour12: !is24h,
-                timeZone: tz,
-              })}{" "}
-              -{" "}
-              {formatToLocalizedTime({
-                date: dayjs(dateStr).add(duration, "m"),
-                locale: language,
-                timeStyle: undefined,
-                hour12: !is24h,
-                timeZone: tz,
-              })}{" "}
+              {formatToLocalizedTime(dayjs(dateStr), language, undefined, !is24h, tz)} -{" "}
+              {formatToLocalizedTime(dayjs(dateStr).add(duration, "m"), language, undefined, !is24h, tz)}{" "}
               <span className="text-bookinglight">
                 ({formatToLocalizedTimezone(dayjs(dateStr), language, tz)})
               </span>
@@ -1262,19 +1236,14 @@ function RecurringBookings({
                   <div key={idx} className={classNames("mb-2", isCancelled ? "line-through" : "")}>
                     {formatToLocalizedDate(dayjs.tz(dateStr, tz), language, "full", tz)}
                     <br />
-                    {formatToLocalizedTime({
-                      date: dayjs(dateStr),
-                      locale: language,
-                      hour12: !is24h,
-                      timeZone: tz,
-                    })}{" "}
-                    -{" "}
-                    {formatToLocalizedTime({
-                      date: dayjs(dateStr).add(duration, "m"),
-                      locale: language,
-                      hour12: !is24h,
-                      timeZone: tz,
-                    })}{" "}
+                    {formatToLocalizedTime(dayjs(dateStr), language, undefined, !is24h, tz)} -{" "}
+                    {formatToLocalizedTime(
+                      dayjs(dateStr).add(duration, "m"),
+                      language,
+                      undefined,
+                      !is24h,
+                      tz
+                    )}{" "}
                     <span className="text-bookinglight">
                       ({formatToLocalizedTimezone(dayjs(dateStr), language, tz)})
                     </span>
@@ -1291,13 +1260,8 @@ function RecurringBookings({
     <div className={classNames(isCancelled ? "line-through" : "")}>
       {formatToLocalizedDate(date, language, "full", tz)}
       <br />
-      {formatToLocalizedTime({ date, locale: language, hour12: !is24h, timeZone: tz })} -{" "}
-      {formatToLocalizedTime({
-        date: dayjs(date).add(duration, "m"),
-        locale: language,
-        hour12: !is24h,
-        timeZone: tz,
-      })}{" "}
+      {formatToLocalizedTime(date, language, undefined, !is24h, tz)} -{" "}
+      {formatToLocalizedTime(dayjs(date).add(duration, "m"), language, undefined, !is24h, tz)}{" "}
       <span className="text-bookinglight">({formatToLocalizedTimezone(date, language, tz)})</span>
     </div>
   );

@@ -9,29 +9,17 @@ import { describe, test, expect, vi } from "vitest";
 
 import { UserRepository } from "@calcom/lib/server/repository/user";
 
-vi.mock("@calcom/lib/server/repository/user", () => {
-  return {
-    UserRepository: vi.fn().mockImplementation(() => ({
-      enrichUserWithItsProfile: vi.fn(),
-    })),
-  };
-});
+// vi.mock("@calcom/lib/server/repository/user", () => {
+//   return {
+//     enrichUserWithItsProfile
+//   }
+// })
 
 describe("getAllCredentialsIncludeServiceAccountKey", () => {
   test("Get an individual's credentials", async () => {
-    const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
+    vi.spyOn(UserRepository, "enrichUserWithItsProfile").mockReturnValue({
       profile: null,
     });
-
-    const mockUserRepository = vi.mocked(UserRepository);
-    if (mockUserRepository && typeof mockUserRepository.mockImplementation === "function") {
-      mockUserRepository.mockImplementation(
-        () =>
-          ({
-            enrichUserWithItsProfile: mockEnrichUserWithItsProfile,
-          } as any)
-      );
-    }
 
     const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
       .getAllCredentialsIncludeServiceAccountKey;
@@ -74,19 +62,9 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
     describe("If CRM is enabled on the event type", () => {
       describe("With _crm credentials", () => {
         test("For users", async () => {
-          const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
+          vi.spyOn(UserRepository, "enrichUserWithItsProfile").mockReturnValue({
             profile: null,
           });
-
-          const mockUserRepository = vi.mocked(UserRepository);
-          if (mockUserRepository && typeof mockUserRepository.mockImplementation === "function") {
-            mockUserRepository.mockImplementation(
-              () =>
-                ({
-                  enrichUserWithItsProfile: mockEnrichUserWithItsProfile,
-                } as any)
-            );
-          }
 
           const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
             .getAllCredentialsIncludeServiceAccountKey;
@@ -158,19 +136,9 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           expect(credentials).toContainEqual(expect.objectContaining({ userId: 1, type: "salesforce_crm" }));
         });
         test("For teams", async () => {
-          const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
+          vi.spyOn(UserRepository, "enrichUserWithItsProfile").mockReturnValue({
             profile: null,
           });
-
-          const mockUserRepository = vi.mocked(UserRepository);
-          if (mockUserRepository && typeof mockUserRepository.mockImplementation === "function") {
-            mockUserRepository.mockImplementation(
-              () =>
-                ({
-                  enrichUserWithItsProfile: mockEnrichUserWithItsProfile,
-                } as any)
-            );
-          }
 
           const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
             .getAllCredentialsIncludeServiceAccountKey;
@@ -235,19 +203,9 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           expect(credentials).toContainEqual(expect.objectContaining({ teamId: 1, type: "salesforce_crm" }));
         });
         test("For child of managed event type", async () => {
-          const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
+          vi.spyOn(UserRepository, "enrichUserWithItsProfile").mockReturnValue({
             profile: null,
           });
-
-          const mockUserRepository = vi.mocked(UserRepository);
-          if (mockUserRepository && typeof mockUserRepository.mockImplementation === "function") {
-            mockUserRepository.mockImplementation(
-              () =>
-                ({
-                  enrichUserWithItsProfile: mockEnrichUserWithItsProfile,
-                } as any)
-            );
-          }
 
           const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
             .getAllCredentialsIncludeServiceAccountKey;
@@ -340,19 +298,9 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
             .getAllCredentialsIncludeServiceAccountKey;
           const orgId = 3;
-          const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
+          vi.spyOn(UserRepository, "enrichUserWithItsProfile").mockReturnValue({
             profile: { organizationId: orgId },
           });
-
-          const mockUserRepository = vi.mocked(UserRepository);
-          if (mockUserRepository && typeof mockUserRepository.mockImplementation === "function") {
-            mockUserRepository.mockImplementation(
-              () =>
-                ({
-                  enrichUserWithItsProfile: mockEnrichUserWithItsProfile,
-                } as any)
-            );
-          }
 
           const crmCredential = {
             id: 1,
@@ -663,19 +611,9 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
             .getAllCredentialsIncludeServiceAccountKey;
           const orgId = 3;
-          const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
+          vi.spyOn(UserRepository, "enrichUserWithItsProfile").mockReturnValue({
             profile: { organizationId: orgId },
           });
-
-          const mockUserRepository = vi.mocked(UserRepository);
-          if (mockUserRepository && typeof mockUserRepository.mockImplementation === "function") {
-            mockUserRepository.mockImplementation(
-              () =>
-                ({
-                  enrichUserWithItsProfile: mockEnrichUserWithItsProfile,
-                } as any)
-            );
-          }
 
           const crmCredential = {
             id: 1,

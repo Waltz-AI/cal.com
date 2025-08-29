@@ -66,13 +66,6 @@ type PhoneCallConfig = {
   schedulerName?: string;
 };
 
-export type PrivateLinkWithOptions = {
-  link: string;
-  expiresAt?: Date | null;
-  maxUsageCount?: number | null;
-  usageCount?: number;
-};
-
 export type FormValues = {
   id: number;
   title: string;
@@ -88,7 +81,6 @@ export type FormValues = {
   description: string;
   disableGuests: boolean;
   lockTimeZoneToggleOnBookingPage: boolean;
-  lockedTimeZone: string | null;
   requiresConfirmation: boolean;
   requiresConfirmationWillBlockSlot: boolean;
   requiresConfirmationForFreeEmail: boolean;
@@ -97,7 +89,7 @@ export type FormValues = {
   schedulingType: SchedulingType | null;
   hidden: boolean;
   hideCalendarNotes: boolean;
-  multiplePrivateLinks: (string | PrivateLinkWithOptions)[] | undefined;
+  multiplePrivateLinks: string[] | undefined;
   eventTypeColor: z.infer<typeof eventTypeColor>;
   customReplyToEmail: string | null;
   locations: EventLocation[];
@@ -131,7 +123,6 @@ export type FormValues = {
   scheduleName: string;
   minimumBookingNotice: number;
   minimumBookingNoticeInDurationType: number;
-  maxActiveBookingsPerBooker: number | null;
   beforeEventBuffer: number;
   afterEventBuffer: number;
   slotInterval: number | null;
@@ -160,19 +151,6 @@ export type FormValues = {
   secondaryEmailId?: number;
   isRRWeightsEnabled: boolean;
   maxLeadThreshold?: number;
-  restrictionScheduleId: number | null;
-  useBookerTimezone: boolean;
-  restrictionScheduleName: string | null;
-  calVideoSettings?: {
-    disableRecordingForOrganizer?: boolean;
-    disableRecordingForGuests?: boolean;
-    enableAutomaticTranscription?: boolean;
-    enableAutomaticRecordingForOrganizer?: boolean;
-    disableTranscriptionForGuests?: boolean;
-    disableTranscriptionForOrganizer?: boolean;
-    redirectUrlOnExit?: string;
-  };
-  maxActiveBookingPerBookerOfferReschedule: boolean;
 };
 
 export type LocationFormValues = Pick<FormValues, "id" | "locations" | "bookingFields" | "seatsPerTimeSlot">;
@@ -228,13 +206,3 @@ export type SelectClassNames = {
   label?: string;
   container?: string;
 };
-
-export type FormValidationResult = {
-  isValid: boolean;
-  errors: Record<string, unknown>;
-};
-
-export interface EventTypePlatformWrapperRef {
-  validateForm: () => Promise<FormValidationResult>;
-  handleFormSubmit: () => void;
-}

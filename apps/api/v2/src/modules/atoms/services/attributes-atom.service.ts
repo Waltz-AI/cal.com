@@ -26,6 +26,7 @@ export class AttributesAtomsService {
       {
         teamId,
         orgId,
+
         attributesQueryValue: input.attributesQueryValue,
       },
       {

@@ -1,9 +1,7 @@
 import type { DateRange } from "@calcom/lib/date-ranges";
-import { IntervalTree, ContainmentSearchAlgorithm, createIntervalNodes } from "@calcom/lib/intervalTree";
 
 /**
  * Filters out date ranges that are completely covered by other date ranges.
- * Uses an interval tree for O(n log n) worst-case complexity.
  * Unlike mergeOverlappingDateRanges, this doesn't merge overlapping ranges,
  * it only removes ranges that are completely contained within others.
  */
@@ -11,38 +9,27 @@ export function filterRedundantDateRanges(dateRanges: DateRange[]): DateRange[] 
   if (dateRanges.length <= 1) return dateRanges;
 
   const sortedRanges = [...dateRanges].sort((a, b) => a.start.valueOf() - b.start.valueOf());
-  const intervalNodes = createIntervalNodes(
-    sortedRanges,
-    (range) => range.start.valueOf(),
-    (range) => range.end.valueOf()
-  );
-  const intervalTree = new IntervalTree(intervalNodes);
-  const searchAlgorithm = new ContainmentSearchAlgorithm(intervalTree);
 
   return sortedRanges.filter((range, index) => {
     if (range.end.valueOf() < range.start.valueOf()) {
       return true;
     }
 
-    const containingIntervals = searchAlgorithm.findContainingIntervals(
-      range.start.valueOf(),
-      range.end.valueOf(),
-      index
-    );
+    for (let i = 0; i < sortedRanges.length; i++) {
+      if (i === index) continue; // Skip comparing with itself
 
-    for (const containingNode of containingIntervals) {
-      const otherRange = containingNode.item;
-      const otherIndex = containingNode.index;
+      const otherRange = sortedRanges[i];
 
-      if (
-        otherRange.start.valueOf() === range.start.valueOf() &&
-        otherRange.end.valueOf() === range.end.valueOf()
-      ) {
-        return otherIndex > index; // Keep current range only if other range has higher index
+      if (otherRange.end.valueOf() < otherRange.start.valueOf()) {
+        continue;
       }
 
-      // If we reach here, the other range actually contains this range
-      return false;
+      if (
+        otherRange.start.valueOf() <= range.start.valueOf() &&
+        otherRange.end.valueOf() >= range.end.valueOf()
+      ) {
+        return false; // This range is redundant, filter it out
+      }
     }
 
     return true; // Keep this range

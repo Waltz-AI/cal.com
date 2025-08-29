@@ -4,7 +4,6 @@ const appStore = {
   caldavcalendar: createCachedImport(() => import("./caldavcalendar")),
   closecom: createCachedImport(() => import("./closecom")),
   dailyvideo: createCachedImport(() => import("./dailyvideo")),
-  dub: createCachedImport(() => import("./dub")),
   googlecalendar: createCachedImport(() => import("./googlecalendar")),
   googlevideo: createCachedImport(() => import("./googlevideo")),
   hubspot: createCachedImport(() => import("./hubspot")),
@@ -42,7 +41,6 @@ const appStore = {
   telegramvideo: createCachedImport(() => import("./telegram")),
   shimmervideo: createCachedImport(() => import("./shimmervideo")),
   hitpay: createCachedImport(() => import("./hitpay")),
-  btcpayserver: createCachedImport(() => import("./btcpayserver")),
 };
 
 function createCachedImport<T>(importFunc: () => Promise<T>): () => Promise<T> {

@@ -66,7 +66,7 @@ export class OrganizationsUsersOOOController {
   @Roles("ORG_ADMIN")
   @PlatformPlan("ESSENTIALS")
   @UseGuards(IsUserInOrg)
-  @ApiOperation({ summary: "Get all out-of-office entries for a user" })
+  @ApiOperation({ summary: "Get all ooo entries of a user" })
   async getOrganizationUserOOO(
     @Param("userId", ParseIntPipe) userId: number,
     @Query() query: GetOutOfOfficeEntryFiltersDTO
@@ -84,7 +84,7 @@ export class OrganizationsUsersOOOController {
   @Roles("ORG_ADMIN")
   @PlatformPlan("ESSENTIALS")
   @UseGuards(IsUserInOrg)
-  @ApiOperation({ summary: "Create an out-of-office entry for a user" })
+  @ApiOperation({ summary: "Create an ooo entry for user" })
   async createOrganizationUserOOO(
     @Param("userId", ParseIntPipe) userId: number,
     @Body() input: CreateOutOfOfficeEntryDto
@@ -100,7 +100,7 @@ export class OrganizationsUsersOOOController {
   @Roles("ORG_ADMIN")
   @PlatformPlan("ESSENTIALS")
   @UseGuards(IsUserInOrg, IsUserOOO)
-  @ApiOperation({ summary: "Update an out-of-office entry for a user" })
+  @ApiOperation({ summary: "Update ooo entry of a user" })
   async updateOrganizationUserOOO(
     @Param("userId", ParseIntPipe) userId: number,
     @Param("oooId", ParseIntPipe) oooId: number,
@@ -118,7 +118,7 @@ export class OrganizationsUsersOOOController {
   @Roles("ORG_ADMIN")
   @PlatformPlan("ESSENTIALS")
   @UseGuards(IsUserInOrg, IsUserOOO)
-  @ApiOperation({ summary: "Delete an out-of-office entry for a user" })
+  @ApiOperation({ summary: "Delete ooo entry of a user" })
   async deleteOrganizationUserOOO(
     @Param("oooId", ParseIntPipe) oooId: number
   ): Promise<UserOooOutputResponseDto> {
@@ -132,7 +132,7 @@ export class OrganizationsUsersOOOController {
   @Get("/ooo")
   @Roles("ORG_ADMIN")
   @PlatformPlan("ESSENTIALS")
-  @ApiOperation({ summary: "Get all out-of-office entries for organization users" })
+  @ApiOperation({ summary: "Get all OOO entries of org users" })
   async getOrganizationUsersOOO(
     @Param("orgId", ParseIntPipe) orgId: number,
     @Query() query: GetOrgUsersOutOfOfficeEntryFiltersDTO

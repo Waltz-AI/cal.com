@@ -47,7 +47,6 @@ type Props = {
   isPlatform?: boolean;
   tabsNavigation: VerticalTabItemProps[];
   allowDelete?: boolean;
-  saveButtonRef?: React.RefObject<HTMLButtonElement>;
 };
 
 function EventTypeSingleLayout({
@@ -65,7 +64,6 @@ function EventTypeSingleLayout({
   isPlatform,
   tabsNavigation,
   allowDelete = true,
-  saveButtonRef,
 }: Props) {
   const { t } = useLocale();
   const eventTypesLockedByOrg = eventType.team?.parent?.organizationSettings?.lockEventTypeCreationForUsers;
@@ -96,11 +94,10 @@ function EventTypeSingleLayout({
   const [Shell] = useMemo(() => {
     return isPlatform ? [PlatformShell] : [WebShell];
   }, [isPlatform]);
-  const teamId = eventType.team?.id;
 
   return (
     <Shell
-      backPath={teamId ? `/event-types?teamId=${teamId}` : "/event-types"}
+      backPath="/event-types"
       title={`${eventType.title} | ${t("event_type")}`}
       heading={eventType.title}
       CTA={
@@ -265,7 +262,6 @@ function EventTypeSingleLayout({
           </Dropdown>
           <div className="border-default border-l-2" />
           <Button
-            ref={saveButtonRef}
             className="ml-4 lg:ml-0"
             type="submit"
             loading={isUpdateMutationLoading}

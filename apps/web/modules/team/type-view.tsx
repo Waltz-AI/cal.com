@@ -34,7 +34,6 @@ function Type({
   teamMemberEmail,
   crmOwnerRecordType,
   crmAppSlug,
-  crmRecordId,
   isEmbed,
   useApiV2,
 }: PageProps) {
@@ -65,7 +64,6 @@ function Type({
           teamMemberEmail={teamMemberEmail}
           crmOwnerRecordType={crmOwnerRecordType}
           crmAppSlug={crmAppSlug}
-          crmRecordId={crmRecordId}
         />
       </main>
     </BookingPageErrorBoundary>

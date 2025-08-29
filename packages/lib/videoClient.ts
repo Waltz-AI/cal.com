@@ -10,7 +10,7 @@ import logger from "@calcom/lib/logger";
 import { getPiiFreeCalendarEvent, getPiiFreeCredential } from "@calcom/lib/piiFreeData";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { prisma } from "@calcom/prisma";
-import type { GetRecordingsResponseSchema, GetAccessLinkResponseSchema } from "@calcom/prisma/zod-utils";
+import type { GetRecordingsResponseSchema } from "@calcom/prisma/zod-utils";
 import type { CalendarEvent, EventBusyDate } from "@calcom/types/Calendar";
 import type { CredentialPayload } from "@calcom/types/Credential";
 import type { EventResult, PartialReference } from "@calcom/types/EventManager";
@@ -92,7 +92,7 @@ const createMeeting = async (credential: CredentialPayload, calEvent: CalendarEv
   };
   try {
     // Check to see if video app is enabled
-    const enabledApp = await prisma.app.findUnique({
+    const enabledApp = await prisma.app.findFirst({
       where: {
         slug: credential.appId,
       },
@@ -258,9 +258,7 @@ const getRecordingsOfCalVideoByRoomName = async (
   return videoAdapter?.getRecordings?.(roomName);
 };
 
-const getDownloadLinkOfCalVideoByRecordingId = async (
-  recordingId: string
-): Promise<GetAccessLinkResponseSchema | undefined> => {
+const getDownloadLinkOfCalVideoByRecordingId = async (recordingId: string) => {
   let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
   try {
     dailyAppKeys = await getDailyAppKeys();

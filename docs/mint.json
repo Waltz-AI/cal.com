@@ -83,7 +83,8 @@
           "pages": [
             "developing/guides/appstore-and-integration/build-a-greeter-app",
             "developing/guides/appstore-and-integration/build-an-app",
-            "developing/guides/appstore-and-integration/how-to-show-assigned-people-from-a-crm"
+            "developing/guides/appstore-and-integration/how-to-show-assigned-people-from-a-crm",
+            "developing/guides/appstore-and-integration/oauth"
           ]
         },
         {
@@ -109,11 +110,6 @@
           "group": "Embeds",
           "icon": "code-simple",
           "pages": ["developing/guides/embeds/embed-events"]
-        },
-        {
-          "group": "Insights",
-          "icon": "chart-bar",
-          "pages": ["developing/guides/insights/add-new-booking-charts"]
         }
       ]
     },
@@ -182,15 +178,6 @@
           "group": "Sponsorship",
           "icon": "money-check-dollar",
           "pages": ["/self-hosting/guides/sponsorship/can-calcom-sponsor-my-open-source-project"]
-        },
-        {
-          "group": "Organizations",
-          "icon": "building",
-          "pages": [
-            "/self-hosting/guides/organization/organization-setup",
-            "/self-hosting/guides/organization/understanding-organization-env-variables",
-            "/self-hosting/guides/organization/single-organization-setup"
-          ]
         }
       ]
     },

@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -280,7 +279,6 @@ const NewRoutingManager = ({
   const { t } = useLocale();
   const router = useRouter();
   const bookerUrl = useBookerUrl();
-  const session = useSession();
   const teamMemberIdsMatchingAttributeLogic =
     teamMembersMatchingAttributeLogic?.data
       ?.map((member) => member.id)
@@ -307,7 +305,7 @@ const NewRoutingManager = ({
     booking,
     currentResponse,
     searchParams: new URLSearchParams({
-      rescheduledBy: session?.data?.user?.email ?? "",
+      // rescheduleReason
     }),
   });
 
@@ -471,7 +469,6 @@ const NewRoutingManager = ({
     // TODO: Long term, we should refactor handleNewBooking and use a different route specific for this purpose,
     createBookingMutation.mutate({
       rescheduleUid: booking.uid,
-      rescheduledBy: session?.data?.user?.email ?? undefined,
       // rescheduleReason,
       reroutingFormResponses: reroutingFormResponses,
       ...getTimeslotFields(),

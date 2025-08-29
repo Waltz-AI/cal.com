@@ -1,7 +1,7 @@
 import { OAuthCalendarApp } from "@/ee/calendars/calendars.interface";
-import type { CalendarState } from "@/ee/calendars/controllers/calendars.controller";
 import { CalendarsService } from "@/ee/calendars/services/calendars.service";
 import { AppsRepository } from "@/modules/apps/apps.repository";
+import { WEB_API_URL } from "@/modules/conferencing/helpers/constant";
 import { CredentialsRepository } from "@/modules/credentials/credentials.repository";
 import { SelectedCalendarsRepository } from "@/modules/selected-calendars/selected-calendars.repository";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
@@ -24,7 +24,6 @@ const CALENDAR_SCOPES = [
 
 @Injectable()
 export class GoogleCalendarService implements OAuthCalendarApp {
-  public readonly redirectUri = `${this.config.get("api.url")}/gcal/oauth/save`;
   private gcalResponseSchema = z.object({ client_id: z.string(), client_secret: z.string() });
   private logger = new Logger("GcalService");
 
@@ -57,7 +56,8 @@ export class GoogleCalendarService implements OAuthCalendarApp {
     redir?: string,
     isDryRun?: boolean
   ): Promise<{ url: string }> {
-    return await this.saveCalendarCredentialsAndRedirect(code, accessToken, origin, redir, isDryRun);
+    const res = await this.saveCalendarCredentialsAndRedirect(code, accessToken, origin, redir, isDryRun);
+    return res;
   }
 
   async check(userId: number): Promise<{ status: typeof SUCCESS_STATUS }> {
@@ -65,19 +65,14 @@ export class GoogleCalendarService implements OAuthCalendarApp {
   }
 
   async getCalendarRedirectUrl(accessToken: string, origin: string, redir?: string, isDryRun?: boolean) {
-    const oAuth2Client = await this.getOAuthClient(this.redirectUri);
-    const state: CalendarState = {
-      accessToken,
-      origin,
-      redir,
-      isDryRun,
-    };
+    const redirectUrl = `${WEB_API_URL}/v2/calendars/google/save`;
+    const oAuth2Client = await this.getOAuthClient(redirectUrl);
 
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: "offline",
       scope: CALENDAR_SCOPES,
       prompt: "consent",
-      state: JSON.stringify(state),
+      state: `accessToken=${accessToken}&origin=${origin}&redir=${redir ?? ""}&isDryRun=${isDryRun}`,
     });
 
     return authUrl;
@@ -151,7 +146,8 @@ export class GoogleCalendarService implements OAuthCalendarApp {
       throw new UnauthorizedException("Invalid Access token.");
     }
 
-    const oAuth2Client = await this.getOAuthClient(this.redirectUri);
+    const redirectUrl = `${WEB_API_URL}/v2/calendars/google/save`;
+    const oAuth2Client = await this.getOAuthClient(redirectUrl);
     const token = await oAuth2Client.getToken(parsedCode);
     // Google oAuth Credentials are stored in token.tokens
     const key = token.tokens;

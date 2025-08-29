@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react";
+import { useRef, useState, useEffect } from "react";
 
 import type { ChildrenEventType } from "@calcom/features/eventtypes/components/ChildrenEventTypeSelect";
 import { EventType as EventTypeComponent } from "@calcom/features/eventtypes/components/EventType";
@@ -12,11 +12,7 @@ import type { EventAvailabilityTabCustomClassNames } from "@calcom/features/even
 import type { EventLimitsTabCustomClassNames } from "@calcom/features/eventtypes/components/tabs/limits/EventLimitsTab";
 import type { EventRecurringTabCustomClassNames } from "@calcom/features/eventtypes/components/tabs/recurring/RecurringEventController";
 import type { EventSetupTabCustomClassNames } from "@calcom/features/eventtypes/components/tabs/setup/EventSetupTab";
-import type {
-  EventTypeSetupProps,
-  FormValues,
-  EventTypePlatformWrapperRef,
-} from "@calcom/features/eventtypes/lib/types";
+import type { EventTypeSetupProps, FormValues } from "@calcom/features/eventtypes/lib/types";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { SchedulingType } from "@calcom/prisma/enums";
 
@@ -61,37 +57,29 @@ export type EventTypePlatformWrapperProps = {
   customClassNames?: EventTypeCustomClassNames;
   disableToasts?: boolean;
   isDryRun?: boolean;
-  onFormStateChange?: (formState: {
-    isDirty: boolean;
-    dirtyFields: Partial<FormValues>;
-    values: FormValues;
-  }) => void;
 };
 
-const EventType = forwardRef<
-  EventTypePlatformWrapperRef,
-  EventTypeSetupProps & EventTypePlatformWrapperProps
->(function EventType(props, ref) {
-  const {
-    tabs = ["setup", "availability", "team", "limits", "advanced", "recurring", "payments"],
-    onSuccess,
-    onError,
-    onDeleteSuccess,
-    onDeleteError,
-    id,
-    allowDelete = true,
-    customClassNames,
-    disableToasts = false,
-    isDryRun = false,
-    onFormStateChange,
-    ...restProps
-  } = props;
+const EventType = ({
+  tabs = ["setup", "availability", "team", "limits", "advanced", "recurring", "payments"],
+  onSuccess,
+  onError,
+  onDeleteSuccess,
+  onDeleteError,
+  id,
+  allowDelete = true,
+  customClassNames,
+  disableToasts = false,
+  isDryRun = false,
+  ...props
+}: EventTypeSetupProps & EventTypePlatformWrapperProps) => {
   const { t } = useLocale();
   const { toast } = useToast();
   const { organizationId } = useAtomsContext();
   const isTeamEventTypeDeleted = useRef(false);
   const leaveWithoutAssigningHosts = useRef(false);
-  const { eventType, locationOptions, team, teamMembers, destinationCalendar } = restProps;
+  const [isOpenAssignmentWarnDialog, setIsOpenAssignmentWarnDialog] = useState<boolean>(false);
+  const [pendingRoute, setPendingRoute] = useState("");
+  const { eventType, locationOptions, team, teamMembers, destinationCalendar } = props;
   const [slugExistsChildrenDialogOpen, setSlugExistsChildrenDialogOpen] = useState<ChildrenEventType[]>([]);
   const { data: user, isLoading: isUserLoading } = useMe();
 
@@ -99,6 +87,7 @@ const EventType = forwardRef<
     showToast(t("event_type_deleted_successfully"), "success");
     isTeamEventTypeDeleted.current = true;
     setSlugExistsChildrenDialogOpen([]);
+    setIsOpenAssignmentWarnDialog(false);
     onDeleteSuccess?.();
   };
 
@@ -161,39 +150,10 @@ const EventType = forwardRef<
         toast({ description: t("event_type_updated_successfully", { eventTypeTitle: eventType.title }) });
       }
     },
-    onFormStateChange: onFormStateChange,
   });
-
-  // Create a ref for the save button to trigger its click
-  const saveButtonRef = useRef<HTMLButtonElement>(null);
-
-  const handleFormSubmit = useCallback(() => {
-    if (saveButtonRef.current) {
-      saveButtonRef.current.click();
-    } else {
-      form.handleSubmit(handleSubmit)();
-    }
-  }, [handleSubmit, form]);
-
-  const validateForm = useCallback(async () => {
-    const isValid = await form.trigger();
-    return {
-      isValid,
-      errors: form.formState.errors,
-    };
-  }, [form]);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      validateForm,
-      handleFormSubmit,
-    }),
-    [validateForm, handleFormSubmit]
-  );
   const slug = form.watch("slug") ?? eventType.slug;
 
-  const showToast = (message: string, _variant: "success" | "warning" | "error") => {
+  const showToast = (message: string, variant: "success" | "warning" | "error") => {
     if (!disableToasts) {
       toast({ description: message });
     }
@@ -279,8 +239,9 @@ const EventType = forwardRef<
     hosts: eventType.hosts,
     assignAllTeamMembers: eventType.assignAllTeamMembers,
     isManagedEventType: eventType.schedulingType === SchedulingType.MANAGED,
-    onError: () => {
-      return;
+    onError: (url) => {
+      setIsOpenAssignmentWarnDialog(true);
+      setPendingRoute(url);
     },
     onStart: () => {
       return;
@@ -316,7 +277,7 @@ const EventType = forwardRef<
   return (
     <AtomsWrapper customClassName={customClassNames?.atomsWrapper}>
       <EventTypeComponent
-        {...restProps}
+        {...props}
         tabMap={tabMap}
         onDelete={onDelete}
         onConflict={onConflict}
@@ -326,8 +287,7 @@ const EventType = forwardRef<
         isPlatform
         tabName={currentTab}
         tabsNavigation={tabsNavigation}
-        allowDelete={allowDelete}
-        saveButtonRef={saveButtonRef}>
+        allowDelete={allowDelete}>
         <>
           {slugExistsChildrenDialogOpen.length ? (
             <ManagedEventTypeDialog
@@ -348,24 +308,19 @@ const EventType = forwardRef<
       </EventTypeComponent>
     </AtomsWrapper>
   );
-});
+};
 
-export const EventTypePlatformWrapper = forwardRef<
-  EventTypePlatformWrapperRef,
-  EventTypePlatformWrapperProps
->(function EventTypePlatformWrapper(props, ref) {
-  const {
-    id,
-    tabs,
-    onSuccess,
-    onError,
-    onDeleteSuccess,
-    onDeleteError,
-    allowDelete = true,
-    customClassNames,
-    isDryRun,
-    onFormStateChange,
-  } = props;
+export const EventTypePlatformWrapper = ({
+  id,
+  tabs,
+  onSuccess,
+  onError,
+  onDeleteSuccess,
+  onDeleteError,
+  allowDelete = true,
+  customClassNames,
+  isDryRun,
+}: EventTypePlatformWrapperProps) => {
   const { data: eventTypeQueryData } = useAtomsEventTypeById(id);
   const queryClient = useQueryClient();
 
@@ -381,7 +336,7 @@ export const EventTypePlatformWrapper = forwardRef<
         });
       }
     };
-  }, [queryClient, id, eventTypeQueryData]);
+  }, [queryClient, id]);
 
   if (!eventTypeQueryData) return null;
 
@@ -397,8 +352,6 @@ export const EventTypePlatformWrapper = forwardRef<
       allowDelete={allowDelete}
       customClassNames={customClassNames}
       isDryRun={isDryRun}
-      onFormStateChange={onFormStateChange}
-      ref={ref}
     />
   );
-});
+};

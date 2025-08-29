@@ -32,7 +32,6 @@ import logger from "@calcom/lib/logger";
 import { randomString } from "@calcom/lib/random";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { CredentialRepository } from "@calcom/lib/server/repository/credential";
-import { DeploymentRepository } from "@calcom/lib/server/repository/deployment";
 import { OrganizationRepository } from "@calcom/lib/server/repository/organization";
 import { ProfileRepository } from "@calcom/lib/server/repository/profile";
 import { UserRepository } from "@calcom/lib/server/repository/user";
@@ -48,7 +47,6 @@ import { dub } from "./dub";
 import { isPasswordValid } from "./isPasswordValid";
 import CalComAdapter from "./next-auth-custom-adapter";
 import { verifyPassword } from "./verifyPassword";
-import { hashEmail } from "@calcom/lib/server/PiiHasher";
 
 const log = logger.getSubLogger({ prefix: ["next-auth-options"] });
 const GOOGLE_API_CREDENTIALS = process.env.GOOGLE_API_CREDENTIALS || "{}";
@@ -117,8 +115,7 @@ const providers: Provider[] = [
         throw new Error(ErrorCode.InternalServerError);
       }
 
-      const userRepo = new UserRepository(prisma);
-      const user = await userRepo.findByEmailAndIncludeProfilesAndPassword({
+      const user = await UserRepository.findByEmailAndIncludeProfilesAndPassword({
         email: credentials.email,
       });
       // Don't leak information about it being username or password that is invalid
@@ -132,7 +129,7 @@ const providers: Provider[] = [
       }
 
       await checkRateLimitAndThrowError({
-        identifier: hashEmail(user.email),
+        identifier: user.email,
       });
 
       if (!user.password?.hash && user.identityProvider !== IdentityProvider.CAL && !credentials.totpCode) {
@@ -293,8 +290,7 @@ if (isSAMLLoginEnabled) {
       locale?: string;
     }) => {
       log.debug("BoxyHQ:profile", safeStringify({ profile }));
-      const userRepo = new UserRepository(prisma);
-      const user = await userRepo.findByEmailAndIncludeProfilesAndPassword({
+      const user = await UserRepository.findByEmailAndIncludeProfilesAndPassword({
         email: profile.email || "",
       });
       return {
@@ -358,8 +354,9 @@ if (isSAMLLoginEnabled) {
 
         const { id, firstName, lastName } = userInfo;
         const email = userInfo.email.toLowerCase();
-        const userRepo = new UserRepository(prisma);
-        let user = !email ? undefined : await userRepo.findByEmailAndIncludeProfilesAndPassword({ email });
+        let user = !email
+          ? undefined
+          : await UserRepository.findByEmailAndIncludeProfilesAndPassword({ email });
         if (!user) {
           const hostedCal = Boolean(HOSTED_CAL_FEATURES);
           if (hostedCal && email) {
@@ -375,7 +372,7 @@ if (isSAMLLoginEnabled) {
                 createUsersAndConnectToOrgProps,
                 org,
               });
-              user = await userRepo.findByEmailAndIncludeProfilesAndPassword({
+              user = await UserRepository.findByEmailAndIncludeProfilesAndPassword({
                 email: email,
               });
             }
@@ -715,8 +712,7 @@ export const getOptions = ({
     },
     async session({ session, token, user }) {
       log.debug("callbacks:session - Session callback called", safeStringify({ session, token, user }));
-      const deploymentRepo = new DeploymentRepository(prisma);
-      const licenseKeyService = await LicenseKeySingleton.getInstance(deploymentRepo);
+      const licenseKeyService = await LicenseKeySingleton.getInstance();
       const hasValidLicense = await licenseKeyService.checkLicense();
       const profileId = token.profileId;
       const calendsoSession: Session = {
@@ -975,7 +971,7 @@ export const getOptions = ({
               return true;
             }
           }
-          return `/auth/error?error=wrong-provider&provider=${existingUserWithEmail.identityProvider}`;
+          return `auth/error?error=wrong-provider&provider=${existingUserWithEmail.identityProvider}`;
         }
 
         // Associate with organization if enabled by flag and idP is Google (for now)
@@ -1057,7 +1053,7 @@ export const getOptions = ({
               dub.track.lead({
                 clickId,
                 eventName: "Sign Up",
-                externalId: user.id.toString(),
+                customerId: user.id.toString(),
                 customerName: user.name,
                 customerEmail: user.email,
                 customerAvatar: user.image,

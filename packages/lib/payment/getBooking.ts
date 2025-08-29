@@ -91,7 +91,6 @@ export async function getBooking(bookingId: number) {
           name: true,
           locale: true,
           destinationCalendar: true,
-          isPlatformManaged: true,
         },
       },
     },

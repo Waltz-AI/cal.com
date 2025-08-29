@@ -1,3 +1,4 @@
-import { AvailableSlotsService } from "@calcom/trpc/server/routers/viewer/slots/util";
+import { getAvailableSlots } from "@calcom/trpc/server/routers/viewer/slots/util";
 
-export { AvailableSlotsService };
+export { getAvailableSlots };
+export type AvailableSlotsType = Awaited<ReturnType<typeof getAvailableSlots>>;

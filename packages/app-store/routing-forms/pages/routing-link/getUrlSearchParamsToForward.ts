@@ -21,7 +21,6 @@ type GetUrlSearchParamsToForwardOptions = {
   >[];
   searchParams: URLSearchParams;
   formResponseId: number | null;
-  queuedFormResponseId: string | null;
   teamMembersMatchingAttributeLogic: number[] | null;
   attributeRoutingConfig: AttributeRoutingConfig | null;
   reroutingFormResponses?: FormResponseValueOnly;
@@ -38,7 +37,6 @@ export function getUrlSearchParamsToForward({
   searchParams,
   teamMembersMatchingAttributeLogic,
   formResponseId,
-  queuedFormResponseId,
   attributeRoutingConfig,
   reroutingFormResponses,
   teamId,
@@ -124,10 +122,7 @@ export function getUrlSearchParamsToForward({
     ...(teamMembersMatchingAttributeLogic
       ? { ["cal.routedTeamMemberIds"]: teamMembersMatchingAttributeLogic.join(",") }
       : null),
-    ...(typeof formResponseId === "number"
-      ? { [ROUTING_FORM_RESPONSE_ID_QUERY_STRING]: String(formResponseId) }
-      : null),
-    ...(queuedFormResponseId ? { ["cal.queuedFormResponseId"]: queuedFormResponseId } : null),
+    [ROUTING_FORM_RESPONSE_ID_QUERY_STRING]: String(formResponseId),
     ...attributeRoutingConfigParams,
     ...(reroutingFormResponses
       ? { ["cal.reroutingFormResponses"]: JSON.stringify(reroutingFormResponses) }
@@ -156,7 +151,7 @@ export function getUrlSearchParamsToForwardForReroute({
   attributeRoutingConfig,
   rescheduleUid,
   reroutingFormResponses,
-}: Omit<GetUrlSearchParamsToForwardOptions, "queuedFormResponseId"> & {
+}: GetUrlSearchParamsToForwardOptions & {
   rescheduleUid: string;
   reroutingFormResponses: FormResponseValueOnly;
 }) {
@@ -165,8 +160,6 @@ export function getUrlSearchParamsToForwardForReroute({
   return getUrlSearchParamsToForward({
     formResponse,
     formResponseId,
-    // Queued form response id is not available in rerouting
-    queuedFormResponseId: null,
     fields,
     searchParams,
     teamMembersMatchingAttributeLogic,
@@ -194,8 +187,6 @@ export function getUrlSearchParamsToForwardForTestPreview({
     teamMembersMatchingAttributeLogic,
     // There is no form response being stored in test preview
     formResponseId: null,
-    // Queued form response id is not available in test preview
-    queuedFormResponseId: null,
     searchParams,
   });
 }

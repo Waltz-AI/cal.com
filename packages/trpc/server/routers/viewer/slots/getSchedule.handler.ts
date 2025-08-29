@@ -1,8 +1,6 @@
-import { getAvailableSlotsService } from "@calcom/lib/di/containers/available-slots";
-
 import type { GetScheduleOptions } from "./types";
+import { getAvailableSlots } from "./util";
 
 export const getScheduleHandler = async ({ ctx, input }: GetScheduleOptions) => {
-  const availableSlotsService = getAvailableSlotsService();
-  return await availableSlotsService.getAvailableSlots({ ctx, input });
+  return await getAvailableSlots({ ctx, input });
 };

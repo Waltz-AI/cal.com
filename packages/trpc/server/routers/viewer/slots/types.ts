@@ -34,7 +34,6 @@ export const getScheduleSchema = z
     _bypassCalendarBusyTimes: z.boolean().optional(),
     _shouldServeCache: z.boolean().optional(),
     routingFormResponseId: z.number().optional(),
-    queuedFormResponseId: z.string().nullish(),
     email: z.string().nullish(),
   })
   .transform((val) => {
@@ -59,6 +58,7 @@ export const reserveSlotSchema = z
     slotUtcStartDate: z.string(),
     // endTime ISOString
     slotUtcEndDate: z.string(),
+    bookingUid: z.string().optional(),
     _isDryRun: z.boolean().optional(),
   })
   .refine(

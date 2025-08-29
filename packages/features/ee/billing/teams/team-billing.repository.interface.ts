@@ -1,11 +1,11 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
-export const teamBillingSelect = {
+export const teamBillingSelect = Prisma.validator<Prisma.TeamSelect>()({
   id: true,
   metadata: true,
   isOrganization: true,
   parentId: true,
-} satisfies Prisma.TeamSelect;
+});
 
 export type TeamBillingType = Prisma.TeamGetPayload<{
   select: typeof teamBillingSelect;

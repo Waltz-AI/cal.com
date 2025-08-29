@@ -26,7 +26,7 @@ import { findMatchingRoute } from "../../lib/processRoute";
 import { substituteVariables } from "../../lib/substituteVariables";
 import { getFieldResponseForJsonLogic } from "../../lib/transformResponse";
 import type { NonRouterRoute, FormResponse } from "../../types/types";
-import type { getServerSideProps } from "./getServerSideProps";
+import { getServerSideProps } from "./getServerSideProps";
 import { getUrlSearchParamsToForward } from "./getUrlSearchParamsToForward";
 
 type Props = inferSSRProps<typeof getServerSideProps>;
@@ -101,7 +101,6 @@ function RoutingForm({ form, profile, ...restProps }: Props) {
       const {
         teamMembersMatchingAttributeLogic,
         formResponse,
-        queuedFormResponse,
         attributeRoutingConfig,
         crmContactOwnerEmail,
         crmContactOwnerRecordType,
@@ -117,8 +116,7 @@ function RoutingForm({ form, profile, ...restProps }: Props) {
       }
       const allURLSearchParams = getUrlSearchParamsToForward({
         formResponse: chosenRouteWithFormResponse.response,
-        formResponseId: formResponse?.id ?? null,
-        queuedFormResponseId: queuedFormResponse?.id ?? null,
+        formResponseId: formResponse.id,
         fields,
         searchParams: new URLSearchParams(window.location.search),
         teamMembersMatchingAttributeLogic,
@@ -222,6 +220,8 @@ function RoutingForm({ form, profile, ...restProps }: Props) {
 export default function RoutingLink(props: inferSSRProps<typeof getServerSideProps>) {
   return <RoutingForm {...props} />;
 }
+
+export { getServerSideProps };
 
 const usePrefilledResponse = (form: Props["form"]) => {
   const searchParams = useCompatSearchParams();

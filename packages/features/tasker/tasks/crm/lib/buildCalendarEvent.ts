@@ -5,7 +5,7 @@ import prisma from "@calcom/prisma";
 import type { CalendarEvent } from "@calcom/types/Calendar";
 
 const buildCalendarEvent: (bookingUid: string) => Promise<CalendarEvent> = async (bookingUid: string) => {
-  const booking = await prisma.booking.findUnique({
+  const booking = await prisma.booking.findFirst({
     where: {
       uid: bookingUid,
     },

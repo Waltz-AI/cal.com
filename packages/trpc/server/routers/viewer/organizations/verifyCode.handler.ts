@@ -8,7 +8,6 @@ import type { ZVerifyCodeInputSchema } from "@calcom/prisma/zod-utils";
 import type { TrpcSessionUser } from "@calcom/trpc/server/types";
 
 import { TRPCError } from "@trpc/server";
-import { hashEmail } from "@calcom/lib/server/PiiHasher";
 
 type VerifyCodeOptions = {
   ctx: {
@@ -35,7 +34,7 @@ export const verifyCodeHandler = async ({ ctx, input }: VerifyCodeOptions) => {
 
   await checkRateLimitAndThrowError({
     rateLimitingType: "core",
-    identifier: hashEmail(email),
+    identifier: email,
   });
 
   const secret = createHash("md5")

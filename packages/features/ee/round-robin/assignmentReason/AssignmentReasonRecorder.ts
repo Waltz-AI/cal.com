@@ -28,18 +28,14 @@ export default class AssignmentReasonRecorder {
     routingFormResponseId,
     organizerId,
     teamId,
-    isRerouting,
-    reroutedByEmail,
   }: {
     bookingId: number;
     routingFormResponseId: number;
     organizerId: number;
     teamId: number;
-    isRerouting: boolean;
-    reroutedByEmail?: string | null;
   }) {
     // Get the routing form data
-    const routingFormResponse = await prisma.app_RoutingForms_FormResponse.findUnique({
+    const routingFormResponse = await prisma.app_RoutingForms_FormResponse.findFirst({
       where: {
         id: routingFormResponseId,
       },
@@ -117,12 +113,8 @@ export default class AssignmentReasonRecorder {
       }
     }
 
-    const reasonEnum = isRerouting
-      ? AssignmentReasonEnum.REROUTED
-      : AssignmentReasonEnum.ROUTING_FORM_ROUTING;
-    const reasonString = `${
-      isRerouting && reroutedByEmail ? `Rerouted by ${reroutedByEmail}` : ""
-    } ${attributeValues.join(", ")}`;
+    const reasonEnum = AssignmentReasonEnum.ROUTING_FORM_ROUTING;
+    const reasonString = attributeValues.join(", ");
 
     await prisma.assignmentReason.create({
       data: {
@@ -149,25 +141,18 @@ export default class AssignmentReasonRecorder {
     teamMemberEmail,
     recordType,
     routingFormResponseId,
-    recordId,
   }: {
     bookingId: number;
     crmAppSlug: string;
     teamMemberEmail: string;
     recordType: string;
     routingFormResponseId: number;
-    recordId?: string;
   }) {
     const appAssignmentReasonHandler = (await import("./appAssignmentReasonHandler")).default;
     const appHandler = appAssignmentReasonHandler[crmAppSlug];
     if (!appHandler) return;
 
-    const crmRoutingReason = await appHandler({
-      recordType,
-      teamMemberEmail,
-      routingFormResponseId,
-      recordId,
-    });
+    const crmRoutingReason = await appHandler({ recordType, teamMemberEmail, routingFormResponseId });
 
     if (!crmRoutingReason || !crmRoutingReason.assignmentReason) return;
 
@@ -201,7 +186,7 @@ export default class AssignmentReasonRecorder {
     reassignReason?: string;
     reassignmentType: RRReassignmentType;
   }) {
-    const reassignedBy = await prisma.user.findUnique({
+    const reassignedBy = await prisma.user.findFirst({
       where: {
         id: reassignById,
       },

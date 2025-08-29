@@ -9,7 +9,6 @@ import { isPasswordValid } from "@calcom/features/auth/lib/isPasswordValid";
 import { WEBSITE_URL } from "@calcom/lib/constants";
 import { emailRegex } from "@calcom/lib/emailSchema";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
-import { Button } from "@calcom/ui/components/button";
 import { EmptyScreen } from "@calcom/ui/components/empty-screen";
 import { EmailField, Label, TextField, PasswordField } from "@calcom/ui/components/form";
 
@@ -35,12 +34,7 @@ export const AdminUserContainer = (props: React.ComponentProps<typeof AdminUser>
   return <AdminUser {...props} />;
 };
 
-export const AdminUser = (props: {
-  onSubmit: () => void;
-  onError: () => void;
-  onSuccess: () => void;
-  nav: { onNext: () => void; onPrev: () => void };
-}) => {
+export const AdminUser = (props: { onSubmit: () => void; onError: () => void; onSuccess: () => void }) => {
   const { t } = useLocale();
 
   const formSchema = z.object({
@@ -124,7 +118,7 @@ export const AdminUser = (props: {
                 <TextField
                   addOnLeading={
                     !longWebsiteUrl && (
-                      <span className="text-subtle inline-flex items-center rounded-none text-sm">
+                      <span className="text-subtle inline-flex items-center rounded-none px-3 text-sm">
                         {process.env.NEXT_PUBLIC_WEBSITE_URL}/
                       </span>
                     )
@@ -192,15 +186,6 @@ export const AdminUser = (props: {
               />
             )}
           />
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button
-            type="submit"
-            color="primary"
-            loading={formMethods.formState.isSubmitting}
-            disabled={!formMethods.formState.isValid || formMethods.formState.isSubmitting}>
-            {t("next")}
-          </Button>
         </div>
       </form>
     </FormProvider>

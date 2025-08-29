@@ -10,7 +10,7 @@ export const QUERY_KEY = "use-get-event-types";
 
 type ResponseEventType = { eventTypes: Array<{ id: number; title: string }> };
 
-export const useAtomGetEventTypes = (teamId?: number, disableBulkUpdateEventTypes = false) => {
+export const useAtomGetEventTypes = (teamId?: number) => {
   const { isInit, accessToken, organizationId } = useAtomsContext();
 
   let pathname = "/atoms/event-types";
@@ -29,6 +29,6 @@ export const useAtomGetEventTypes = (teamId?: number, disableBulkUpdateEventType
         throw new Error(res.data.error.message);
       });
     },
-    enabled: isInit && !!accessToken && !disableBulkUpdateEventTypes,
+    enabled: isInit && !!accessToken,
   });
 };

@@ -85,27 +85,6 @@ export class UsersRepository {
     });
   }
 
-  async findOwnerByTeamIdWithProfile(teamId: number): Promise<UserWithProfile | null> {
-    return this.dbRead.prisma.user.findFirst({
-      where: {
-        teams: {
-          some: {
-            teamId,
-            role: "OWNER",
-          },
-        },
-      },
-      include: {
-        movedToProfile: {
-          include: { organization: { select: { isPlatform: true, name: true, slug: true, id: true } } },
-        },
-        profiles: {
-          include: { organization: { select: { isPlatform: true, name: true, slug: true, id: true } } },
-        },
-      },
-    });
-  }
-
   async findByIdsWithEventTypes(userIds: number[]) {
     return this.dbRead.prisma.user.findMany({
       where: {
@@ -406,5 +385,55 @@ export class UsersRepository {
         email: true,
       },
     });
+  }
+
+  async findByIdOrThrow({ id }: { id: number }) {
+    const user = await this.dbRead.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        bio: true,
+        avatarUrl: true,
+        timeZone: true,
+        startTime: true,
+        endTime: true,
+        weekStart: true,
+        bufferTime: true,
+        hideBranding: true,
+        theme: true,
+        createdDate: true,
+        trialEndsAt: true,
+        completedOnboarding: true,
+        locale: true,
+        timeFormat: true,
+        twoFactorSecret: true,
+        twoFactorEnabled: true,
+        backupCodes: true,
+        identityProviderId: true,
+        invitedTo: true,
+        brandColor: true,
+        darkBrandColor: true,
+        allowDynamicBooking: true,
+        allowSEOIndexing: true,
+        receiveMonthlyDigestEmail: true,
+        verified: true,
+        disableImpersonation: true,
+        locked: true,
+        movedToProfileId: true,
+        metadata: true,
+        isPlatformManaged: true,
+        lastActiveAt: true,
+        identityProvider: true,
+        teams: true,
+      },
+    });
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    return user;
   }
 }

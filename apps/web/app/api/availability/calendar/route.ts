@@ -11,7 +11,6 @@ import { HttpError } from "@calcom/lib/http-error";
 import notEmpty from "@calcom/lib/notEmpty";
 import { SelectedCalendarRepository } from "@calcom/lib/server/repository/selectedCalendar";
 import { UserRepository } from "@calcom/lib/server/repository/user";
-import prisma from "@calcom/prisma";
 
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
 
@@ -30,10 +29,7 @@ async function authMiddleware() {
     throw new HttpError({ statusCode: 401, message: "Not authenticated" });
   }
 
-  const userRepo = new UserRepository(prisma);
-  const userWithCredentials = await userRepo.findUserWithCredentials({
-    id: session.user.id,
-  });
+  const userWithCredentials = await UserRepository.findUserWithCredentials({ id: session.user.id });
 
   if (!userWithCredentials) {
     throw new HttpError({ statusCode: 401, message: "Not authenticated" });

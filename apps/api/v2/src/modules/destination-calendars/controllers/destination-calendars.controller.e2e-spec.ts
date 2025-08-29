@@ -73,7 +73,6 @@ describe("Platform Destination Calendar Endpoints", () => {
       user.id,
       APPLE_CALENDAR_ID
     );
-
     jest.spyOn(CalendarsService.prototype, "getCalendars").mockReturnValue(
       Promise.resolve({
         connectedCalendars: [
@@ -92,37 +91,20 @@ describe("Platform Destination Calendar Endpoints", () => {
               publisher: "",
               url: "",
               email: "",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
             },
-            // calendars: {
-            //   externalId:
-            //     "https://caldav.icloud.com/20961146906/calendars/83C4F9A1-F1D0-41C7-8FC3-0B$9AE22E813/",
-            //   readOnly: false,
-            //   integration: "apple_calendar",
-            //   credentialId: appleCalendarCredentials.id,
-            //   primary: true,
-            //   email: user.email,
-            // },
+            calendars: {
+              externalId:
+                "https://caldav.icloud.com/20961146906/calendars/83C4F9A1-F1D0-41C7-8FC3-0B$9AE22E813/",
+              readOnly: false,
+              integration: "apple_calendar",
+              credentialId: appleCalendarCredentials.id,
+              primary: true,
+              email: user.email,
+            },
             error: { message: "" },
-            delegationCredentialId: null,
-            credentialId: appleCalendarCredentials.id,
           },
         ],
-        destinationCalendar: {
-          name: "destinationCalendar",
-          eventTypeId: 1,
-          credentialId: appleCalendarCredentials.id,
-          primaryEmail: "primaryEmail",
-          integration: "apple_calendar",
-          externalId: "externalId",
-          userId: null,
-          id: 0,
-          delegationCredentialId: null,
-          domainWideDelegationCredentialId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+        destinationCalendar: null,
       })
     );
     app = moduleRef.createNestApplication();
@@ -152,7 +134,7 @@ describe("Platform Destination Calendar Endpoints", () => {
     expect(user).toBeDefined();
   });
 
-  it.skip(`POST /v2/destination-calendars: it should respond with a 200 returning back the user updated destination calendar`, async () => {
+  it(`POST /v2/destination-calendars: it should respond with a 200 returning back the user updated destination calendar`, async () => {
     const body = {
       integration: appleCalendarCredentials.type,
       externalId: "https://caldav.icloud.com/20961146906/calendars/83C4F9A1-F1D0-41C7-8FC3-0B$9AE22E813/",

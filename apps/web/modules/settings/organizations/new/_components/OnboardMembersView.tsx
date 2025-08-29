@@ -29,15 +29,10 @@ const AddNewTeamMembers = () => {
   return <AddNewTeamMembersForm />;
 };
 
-const useOrgCreation = () => {
+const useCheckout = () => {
   const { t } = useLocale();
-  const session = useSession();
-  const utils = trpc.useUtils();
   const [serverErrorMessage, setServerErrorMessage] = useState("");
-  const { useOnboardingStore, isBillingEnabled } = useOnboarding();
-  const { reset } = useOnboardingStore();
-
-  const checkoutMutation = trpc.viewer.organizations.createWithPaymentIntent.useMutation({
+  const mutation = trpc.viewer.organizations.createWithPaymentIntent.useMutation({
     onSuccess: (data) => {
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
@@ -48,34 +43,17 @@ const useOrgCreation = () => {
     },
   });
 
-  const createOrgMutation = trpc.viewer.organizations.createSelfHosted.useMutation({
-    onSuccess: async (data) => {
-      if (data.organization) {
-        // Invalidate the organizations query to ensure fresh data on the next page
-        await utils.viewer.organizations.listCurrent.invalidate();
-        await session.update();
-        reset();
-        window.location.href = `${window.location.origin}/settings/organizations/profile`;
-      }
-    },
-    onError: (error) => {
-      setServerErrorMessage(t(error.message));
-    },
-  });
-
-  const mutationToUse = isBillingEnabled ? checkoutMutation : createOrgMutation;
-
   return {
-    mutation: mutationToUse,
-    mutate: mutationToUse.mutate,
-    isPending: mutationToUse.isPending,
+    mutation,
+    mutate: mutation.mutate,
+    isPending: mutation.isPending,
     errorMessage: serverErrorMessage,
   };
 };
 
 export const AddNewTeamMembersForm = () => {
   const { t } = useLocale();
-  const { useOnboardingStore, isBillingEnabled } = useOnboarding();
+  const { useOnboardingStore } = useOnboarding();
   const {
     addInvitedMember,
     removeInvitedMember,
@@ -86,7 +64,7 @@ export const AddNewTeamMembersForm = () => {
     bio,
     onboardingId,
   } = useOnboardingStore();
-  const orgCreation = useOrgCreation();
+  const checkout = useCheckout();
 
   const teamIds = teams.filter((team) => team.isBeingMigrated && team.id > 0).map((team) => team.id);
 
@@ -139,9 +117,9 @@ export const AddNewTeamMembersForm = () => {
 
   return (
     <>
-      {orgCreation.errorMessage && (
+      {checkout.errorMessage && (
         <div className="mb-4">
-          <Alert severity="error" message={orgCreation.errorMessage} />
+          <Alert severity="error" message={checkout.errorMessage} />
         </div>
       )}
       <div className="space-y-6">
@@ -202,7 +180,6 @@ export const AddNewTeamMembersForm = () => {
           </ul>
         )}
       </div>
-
       <div className="mt-3 mt-6 flex items-center justify-end">
         <Button
           onClick={() => {
@@ -213,7 +190,7 @@ export const AddNewTeamMembersForm = () => {
               });
               return;
             }
-            orgCreation.mutation.mutate({
+            checkout.mutation.mutate({
               logo,
               bio,
               teams,
@@ -221,8 +198,8 @@ export const AddNewTeamMembersForm = () => {
               onboardingId,
             });
           }}
-          loading={orgCreation.isPending}>
-          {isBillingEnabled ? t("checkout") : t("create")}
+          loading={checkout.isPending}>
+          {t("checkout")}
         </Button>
       </div>
     </>

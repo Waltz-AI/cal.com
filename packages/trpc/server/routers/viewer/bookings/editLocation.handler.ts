@@ -10,7 +10,6 @@ import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { getUsersCredentialsIncludeServiceAccountKey } from "@calcom/lib/server/getUsersCredentials";
 import { getTranslation } from "@calcom/lib/server/i18n";
-import { BookingRepository } from "@calcom/lib/server/repository/booking";
 import { CredentialRepository } from "@calcom/lib/server/repository/credential";
 import { UserRepository } from "@calcom/lib/server/repository/user";
 import { prisma } from "@calcom/prisma";
@@ -98,16 +97,19 @@ async function updateBookingLocationInDb({
     };
   });
 
-  const bookingRepository = new BookingRepository(prisma);
-  await bookingRepository.updateLocationById({
-    where: { id: booking.id },
+  await prisma.booking.update({
+    where: {
+      id: booking.id,
+    },
     data: {
       location: evt.location,
       metadata: {
         ...(typeof booking.metadata === "object" && booking.metadata),
         ...bookingMetadataUpdate,
       },
-      referencesToCreate,
+      references: {
+        create: referencesToCreate,
+      },
       responses: {
         ...(typeof booking.responses === "object" && booking.responses),
         location: {
@@ -115,7 +117,6 @@ async function updateBookingLocationInDb({
           optionValue: "",
         },
       },
-      iCalSequence: (evt.iCalSequence || 0) + 1,
     },
   });
 }
@@ -247,7 +248,7 @@ export async function editLocationHandler({ ctx, input }: EditLocationOptions) {
   const { newLocation, credentialId: conferenceCredentialId } = input;
   const { booking, user: loggedInUser } = ctx;
 
-  const organizer = await new UserRepository(prisma).findByIdOrThrow({ id: booking.userId || 0 });
+  const organizer = await UserRepository.findByIdOrThrow({ id: booking.userId || 0 });
 
   const newLocationInEvtFormat = await getLocationInEvtFormatOrThrow({
     location: newLocation,

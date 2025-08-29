@@ -38,8 +38,7 @@ describe("GET /api/bookings", async () => {
 
     expect(responseData.bookings.find((b) => b.userId === memberUser.id)).toBeDefined();
     expect(groupedUsers.size).toBe(1);
-    const firstEntry = groupedUsers.entries().next().value;
-    expect(firstEntry?.[0]).toBe(memberUser.id);
+    expect(groupedUsers.entries().next().value[0]).toBe(memberUser.id);
   });
 
   it("Returns bookings for regular user", async () => {

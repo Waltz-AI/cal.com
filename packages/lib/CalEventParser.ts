@@ -16,6 +16,11 @@ export const getWhat = (calEvent: Pick<CalendarEvent, "title">, t: TFunction) =>
   return `${t("what")}:\n${calEvent.title}`;
 };
 
+export const getTitle = (calEvent: any, t: TFunction) => {
+  if (!calEvent.metadata?.title) return "";
+  return `${t("title")}:\n${calEvent.metadata.title}`;
+};
+
 export const getWhen = (
   calEvent: Pick<CalendarEvent, "organizer" | "attendees" | "seatsPerTimeSlot">,
   t: TFunction
@@ -312,7 +317,9 @@ type RichDescriptionCalEvent = Parameters<typeof getCancellationReason>[0] &
   Parameters<typeof getUserFieldsResponses>[0] &
   Parameters<typeof getAppsStatus>[0] &
   Parameters<typeof getManageLink>[0] &
-  Pick<CalendarEvent, "organizer" | "paymentInfo">;
+  Pick<CalendarEvent, "organizer" | "paymentInfo"> & {
+    metadata?: { [key: string]: string | number | boolean | null };
+  };
 
 export const getRichDescription = (
   calEvent: RichDescriptionCalEvent,
@@ -324,6 +331,7 @@ export const getRichDescription = (
   // Join all parts with single newlines and remove extra whitespace
   const parts = [
     getCancellationReason(calEvent, t),
+    getTitle(calEvent, t),
     getWhat(calEvent, t),
     getWhen(calEvent, t),
     getWho(calEvent, t),

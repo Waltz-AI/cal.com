@@ -160,7 +160,7 @@ export const verifyEmailSender = async (email: string, userId: number, teamId: n
   }
 
   if (teamId) {
-    const team = await prisma.team.findUnique({
+    const team = await prisma.team.findFirst({
       where: {
         id: teamId,
       },
@@ -410,7 +410,7 @@ export async function isAuthorizedToAddActiveOnIds(
 ) {
   for (const id of newActiveIds) {
     if (isOrg) {
-      const newTeam = await prisma.team.findUnique({
+      const newTeam = await prisma.team.findFirst({
         where: {
           id,
         },
@@ -422,7 +422,7 @@ export async function isAuthorizedToAddActiveOnIds(
         return false;
       }
     } else {
-      const newEventType = await prisma.eventType.findUnique({
+      const newEventType = await prisma.eventType.findFirst({
         where: {
           id,
         },

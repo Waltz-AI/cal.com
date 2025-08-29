@@ -52,8 +52,7 @@ export default class OrganizerScheduledEmail extends BaseEmail {
       to: toAddresses.join(","),
       ...getReplyToHeader(
         this.calEvent,
-        this.calEvent.attendees.map(({ email }) => email),
-        true
+        this.calEvent.attendees.map(({ email }) => email)
       ),
       subject: `${this.newSeat ? `${this.t("new_attendee")}: ` : ""}${this.calEvent.title}`,
       html: await this.getHtml(

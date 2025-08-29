@@ -8,7 +8,6 @@ import { safeStringify } from "@calcom/lib/safeStringify";
 import { CredentialRepository } from "@calcom/lib/server/repository/credential";
 import type { ServiceAccountKey } from "@calcom/lib/server/repository/delegationCredential";
 import { DelegationCredentialRepository } from "@calcom/lib/server/repository/delegationCredential";
-import prisma from "@calcom/prisma";
 import type { CredentialForCalendarService, CredentialPayload } from "@calcom/types/Credential";
 
 import { UserRepository } from "../server/repository/user";
@@ -104,7 +103,7 @@ const _buildCommonUserCredential = ({
   };
 };
 
-const _buildDelegatedCalendarCredential = ({
+export const _buildDelegatedCalendarCredential = ({
   delegationCredential,
   user,
 }: {
@@ -160,7 +159,7 @@ const _buildDelegatedCalendarCredentialWithServiceAccountKey = ({
   };
 };
 
-const _buildDelegatedConferencingCredential = ({
+export const _buildDelegatedConferencingCredential = ({
   delegationCredential,
   user,
 }: {
@@ -451,17 +450,7 @@ export const enrichHostsWithDelegationCredentials = async <
       },
     };
   });
-  log.debug(
-    "enrichHostsWithDelegationCredentials",
-    safeStringify({
-      enrichedHosts: enrichedHosts.map((host) => {
-        return {
-          userId: host.user.id,
-        };
-      }),
-      orgId,
-    })
-  );
+  log.debug("enrichHostsWithDelegationCredentials", safeStringify({ enrichedHosts, orgId }));
   return enrichedHosts;
 };
 
@@ -594,7 +583,7 @@ export async function findUniqueDelegationCalendarCredential({
 }) {
   const [delegationCredential, user] = await Promise.all([
     DelegationCredentialRepository.findByIdIncludeSensitiveServiceAccountKey({ id: delegationCredentialId }),
-    new UserRepository(prisma).findById({ id: userId }),
+    UserRepository.findById({ id: userId }),
   ]);
 
   if (!delegationCredential) {

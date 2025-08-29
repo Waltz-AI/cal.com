@@ -26,7 +26,7 @@ export const paymentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { prisma } = ctx;
 
-      const booking = await prisma.booking.findUniqueOrThrow({
+      const booking = await prisma.booking.findFirstOrThrow({
         where: {
           id: input.bookingId,
         },
@@ -129,7 +129,7 @@ export const paymentsRouter = router({
         const userId = ctx.user.id || 0;
         const orgId = await getOrgIdFromMemberOrTeamId({ memberId: userId });
         const eventTypeId = booking.eventTypeId || 0;
-        const webhooks = await WebhookService.init({
+        const webhooks = await new WebhookService({
           userId,
           eventTypeId,
           triggerEvent: WebhookTriggerEvents.BOOKING_PAID,

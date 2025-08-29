@@ -30,7 +30,7 @@ const ServerPage = async ({ searchParams: _searchParams }: ServerPageProps) => {
   }
 
   const t = await getTranslate();
-  const { Main, CTA } = await ServerTeamsListing({ searchParams, session });
+  const { Main, CTA } = await ServerTeamsListing({ searchParams });
 
   return (
     <ShellMainAppDir CTA={CTA} heading={t("teams")} subtitle={t("create_manage_teams_collaborative")}>

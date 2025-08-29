@@ -28,26 +28,21 @@ function getAdjustedTimezone(date: Dayjs, timeZone: string, travelSchedules: Tra
   return adjustedTimezone;
 }
 
-// reducer
-export function processWorkingHours(
-  results: Record<number, DateRange>,
-  {
-    item,
-    timeZone,
-    dateFrom,
-    dateTo,
-    travelSchedules,
-  }: {
-    item: WorkingHours;
-    timeZone: string;
-    dateFrom: Dayjs;
-    dateTo: Dayjs;
-    travelSchedules: TravelSchedule[];
-  }
-) {
+export function processWorkingHours({
+  item,
+  timeZone,
+  dateFrom,
+  dateTo,
+  travelSchedules,
+}: {
+  item: WorkingHours;
+  timeZone: string;
+  dateFrom: Dayjs;
+  dateTo: Dayjs;
+  travelSchedules: TravelSchedule[];
+}) {
   const utcDateTo = dateTo.utc();
-  let endTimeToKeyMap: Map<number, number[]> | undefined;
-
+  const results = [];
   for (let date = dateFrom.startOf("day"); utcDateTo.isAfter(date); date = date.add(1, "day")) {
     const fromOffset = dateFrom.startOf("day").utcOffset();
 
@@ -87,88 +82,11 @@ export function processWorkingHours(
       continue;
     }
 
-    const endTimeKey = endResult.valueOf();
-
-    // Create a map of end times to range keys for O(1) lookup
-    if (!endTimeToKeyMap) {
-      endTimeToKeyMap = new Map<number, number[]>();
-      for (const [key, range] of Object.entries(results)) {
-        const endTime = range.end.valueOf();
-        if (!endTimeToKeyMap.has(endTime)) {
-          endTimeToKeyMap.set(endTime, []);
-        }
-        endTimeToKeyMap.get(endTime)!.push(Number(key));
-      }
-    }
-
-    // Check for overlapping ranges with the same end time using O(1) lookup
-    const keysWithSameEndTime = endTimeToKeyMap.get(endTimeKey) || [];
-    let foundOverlapping = false;
-
-    for (const key of keysWithSameEndTime) {
-      const existingRange = results[key];
-      if (
-        startResult.valueOf() <= existingRange.end.valueOf() &&
-        endResult.valueOf() >= existingRange.start.valueOf()
-      ) {
-        // Merge by taking the earliest start time and keeping the same end time
-        results[key] = {
-          start: dayjs.min(existingRange.start, startResult),
-          end: endResult,
-        };
-        foundOverlapping = true;
-        break;
-      }
-    }
-
-    if (foundOverlapping) {
-      continue;
-    }
-
-    if (results[startResult.valueOf()]) {
-      // if a result already exists, we merge the end time
-      const oldKey = startResult.valueOf();
-      const newKey = endResult.valueOf();
-
-      results[newKey] = {
-        start: results[oldKey].start,
-        end: dayjs.max(results[oldKey].end, endResult),
-      };
-
-      if (endTimeToKeyMap) {
-        const oldEndTime = results[oldKey].end.valueOf();
-        const oldKeys = endTimeToKeyMap.get(oldEndTime) || [];
-        const filteredKeys = oldKeys.filter((k) => k !== oldKey);
-        if (filteredKeys.length === 0) {
-          endTimeToKeyMap.delete(oldEndTime);
-        } else {
-          endTimeToKeyMap.set(oldEndTime, filteredKeys);
-        }
-
-        if (!endTimeToKeyMap.has(endTimeKey)) {
-          endTimeToKeyMap.set(endTimeKey, []);
-        }
-        endTimeToKeyMap.get(endTimeKey)!.push(newKey);
-      }
-
-      delete results[oldKey]; // delete the previous end time
-      continue;
-    }
-    // otherwise we create a new result
-    const newKey = endResult.valueOf();
-    results[newKey] = {
+    results.push({
       start: startResult,
       end: endResult,
-    };
-
-    if (endTimeToKeyMap) {
-      if (!endTimeToKeyMap.has(endTimeKey)) {
-        endTimeToKeyMap.set(endTimeKey, []);
-      }
-      endTimeToKeyMap.get(endTimeKey)!.push(newKey);
-    }
+    });
   }
-
   return results;
 }
 
@@ -214,9 +132,12 @@ export function processDateOverride({
   };
 }
 
-// This function processes out-of-office dates and returns a date range for each OOO date.
 function processOOO(outOfOffice: Dayjs, timeZone: string) {
-  const OOOdate = outOfOffice.tz(timeZone, true);
+  const utcOffset = outOfOffice.tz(timeZone).utcOffset();
+  const utcDate = outOfOffice.subtract(utcOffset, "minute");
+
+  const OOOdate = utcDate.tz(timeZone);
+
   return {
     start: OOOdate,
     end: OOOdate,
@@ -239,40 +160,25 @@ export function buildDateRanges({
   outOfOffice?: IOutOfOfficeData;
 }): { dateRanges: DateRange[]; oooExcludedDateRanges: DateRange[] } {
   const dateFromOrganizerTZ = dateFrom.tz(timeZone);
-
   const groupedWorkingHours = groupByDate(
-    Object.values(
-      availability.reduce((processed: Record<number, DateRange>, item) => {
-        if (!("days" in item)) {
-          return processed;
-        }
-
-        processed = processWorkingHours(processed, {
-          item,
-          timeZone,
-          dateFrom: dateFromOrganizerTZ,
-          dateTo,
-          travelSchedules,
-        });
-
-        return processed;
-      }, {})
-    )
+    availability.reduce((processed: DateRange[], item) => {
+      if ("days" in item) {
+        processed = processed.concat(
+          processWorkingHours({ item, timeZone, dateFrom: dateFromOrganizerTZ, dateTo, travelSchedules })
+        );
+      }
+      return processed;
+    }, [])
   );
+  const OOOdates = outOfOffice
+    ? Object.keys(outOfOffice).map((outOfOffice) => processOOO(dayjs(outOfOffice), timeZone))
+    : [];
 
-  const groupedOOO = groupByDate(
-    outOfOffice
-      ? Object.keys(outOfOffice).map((outOfOffice) => processOOO(dayjs.utc(outOfOffice), timeZone))
-      : []
-  );
+  const groupedOOO = groupByDate(OOOdates);
 
   const groupedDateOverrides = groupByDate(
-    Object.values(
-      availability.reduce((processed: Record<number, DateRange>, item) => {
-        // early return if item is not a date override
-        if (!("date" in item && !!item.date)) {
-          return processed;
-        }
+    availability.reduce((processed: DateRange[], item) => {
+      if ("date" in item && !!item.date) {
         const itemDateAsUtc = dayjs.utc(item.date);
         // TODO: Remove the .subtract(1, "day") and .add(1, "day") part and
         // refactor this to actually work with correct dates.
@@ -287,26 +193,11 @@ export function buildDateRanges({
             "[]"
           )
         ) {
-          // unlike working hours, date overrides are always one. No loop per day.
-          const newProcessedDateOverride = processDateOverride({
-            item,
-            itemDateAsUtc,
-            timeZone,
-            travelSchedules,
-          });
-          if (processed[newProcessedDateOverride.start.valueOf()]) {
-            // if a result already exists, we merge the end time
-            processed[newProcessedDateOverride.start.valueOf()].end = dayjs.max(
-              processed[newProcessedDateOverride.start.valueOf()].end,
-              newProcessedDateOverride.end
-            );
-            return processed;
-          }
-          processed[newProcessedDateOverride.end.valueOf()] = newProcessedDateOverride;
+          processed.push(processDateOverride({ item, itemDateAsUtc, timeZone, travelSchedules }));
         }
-        return processed;
-      }, {})
-    )
+      }
+      return processed;
+    }, [])
   );
 
   const dateRanges = Object.values({
@@ -352,93 +243,72 @@ export function groupByDate(ranges: DateRange[]): { [x: string]: DateRange[] } {
 }
 
 export function intersect(ranges: DateRange[][]): DateRange[] {
-  if (!ranges.length) {
-    return [];
-  }
+  if (!ranges.length) return [];
+  // Get the ranges of the first user
+  let commonAvailability = ranges[0];
 
-  type ProcessedDateRange = DateRange & { startValue: number; endValue: number };
+  // For each of the remaining users, find the intersection of their ranges with the current common availability
+  for (let i = 1; i < ranges.length; i++) {
+    const userRanges = ranges[i];
 
-  // Pre-sort all user ranges and cache timestamp values.
-  const sortedRanges: ProcessedDateRange[][] = ranges.map((userRanges) =>
-    userRanges
-      .map((r) => ({
-        ...r,
-        startValue: r.start.valueOf(),
-        endValue: r.end.valueOf(),
-      }))
-      .sort((a, b) => a.startValue - b.startValue)
-  );
+    const intersectedRanges: {
+      start: Dayjs;
+      end: Dayjs;
+    }[] = [];
 
-  let commonAvailability: ProcessedDateRange[] = sortedRanges[0];
+    commonAvailability.forEach((commonRange) => {
+      userRanges.forEach((userRange) => {
+        const intersection = getIntersection(commonRange, userRange);
+        if (intersection !== null) {
+          // If the current common range intersects with the user range, add the intersected time range to the new array
+          intersectedRanges.push(intersection);
+        }
+      });
+    });
 
-  for (let i = 1; i < sortedRanges.length; i++) {
-    // Early exit if no common availability is left.
-    if (commonAvailability.length === 0) {
-      return [];
-    }
-
-    const userRanges = sortedRanges[i];
-    const intersectedRanges: ProcessedDateRange[] = [];
-
-    let commonIndex = 0;
-    let userIndex = 0;
-
-    while (commonIndex < commonAvailability.length && userIndex < userRanges.length) {
-      const commonRange = commonAvailability[commonIndex];
-      const userRange = userRanges[userIndex];
-
-      const intersectStartValue = Math.max(commonRange.startValue, userRange.startValue);
-      const intersectEndValue = Math.min(commonRange.endValue, userRange.endValue);
-
-      if (intersectStartValue < intersectEndValue) {
-        const intersectStart =
-          commonRange.startValue > userRange.startValue ? commonRange.start : userRange.start;
-        const intersectEnd = commonRange.endValue < userRange.endValue ? commonRange.end : userRange.end;
-        intersectedRanges.push({
-          start: intersectStart,
-          end: intersectEnd,
-          startValue: intersectStartValue,
-          endValue: intersectEndValue,
-        });
-      }
-
-      if (commonRange.endValue <= userRange.endValue) {
-        commonIndex++;
-      } else {
-        userIndex++;
-      }
-    }
     commonAvailability = intersectedRanges;
   }
 
-  // Strip the cached values before returning to match the expected DateRange[] type.
-  return commonAvailability.map(({ start, end }) => ({ start, end }));
+  // If the common availability is empty, there is no time when all users are available
+  if (commonAvailability.length === 0) {
+    return [];
+  }
+
+  return commonAvailability;
+}
+
+function getIntersection(range1: DateRange, range2: DateRange) {
+  const start = range1.start.utc().isAfter(range2.start) ? range1.start : range2.start;
+  const end = range1.end.utc().isBefore(range2.end) ? range1.end : range2.end;
+  if (start.utc().isBefore(end)) {
+    return { start, end };
+  }
+  return null;
 }
 
 export function subtract(
   sourceRanges: (DateRange & { [x: string]: unknown })[],
   excludedRanges: DateRange[]
 ) {
-  const result = [];
-  const sortedExcludedRanges = [...excludedRanges].sort((a, b) => a.start.valueOf() - b.start.valueOf());
+  const result: DateRange[] = [];
 
   for (const { start: sourceStart, end: sourceEnd, ...passThrough } of sourceRanges) {
     let currentStart = sourceStart;
 
-    for (const excludedRange of sortedExcludedRanges) {
-      if (excludedRange.start.valueOf() >= sourceEnd.valueOf()) break;
-      if (excludedRange.end.valueOf() <= currentStart.valueOf()) continue;
+    const overlappingRanges = excludedRanges.filter(
+      ({ start, end }) => start.isBefore(sourceEnd) && end.isAfter(sourceStart)
+    );
 
-      if (excludedRange.start.valueOf() > currentStart.valueOf()) {
-        result.push({ start: currentStart, end: excludedRange.start, ...passThrough });
-      }
+    overlappingRanges.sort((a, b) => (a.start.isAfter(b.start) ? 1 : -1));
 
-      if (excludedRange.end.valueOf() > currentStart.valueOf()) {
-        currentStart = excludedRange.end;
+    for (const { start: excludedStart, end: excludedEnd } of overlappingRanges) {
+      if (excludedStart.isAfter(currentStart)) {
+        result.push({ start: currentStart, end: excludedStart });
       }
+      currentStart = excludedEnd.isAfter(currentStart) ? excludedEnd : currentStart;
     }
 
-    if (sourceEnd.valueOf() > currentStart.valueOf()) {
+    if (sourceEnd.isAfter(currentStart)) {
       result.push({ start: currentStart, end: sourceEnd, ...passThrough });
     }
   }

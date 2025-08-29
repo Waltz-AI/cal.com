@@ -2,7 +2,12 @@ const base = require("@calcom/config/tailwind-preset");
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   ...base,
-  content: [...base.content, "../../../packages/ui/!(node_modules)/**/*.{js,ts,jsx,tsx,mdx}", "./**/*.tsx"],
+  content: [
+    ...base.content,
+    "../../../packages/ui/!(node_modules)/**/*.{js,ts,jsx,tsx,mdx}",
+    "../../../node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
+    "./**/*.tsx",
+  ],
   plugins: [...base.plugins, require("tailwindcss-animate")],
   theme: {
     ...base.theme,

@@ -49,7 +49,7 @@ export class StripeController {
   @Get("/connect")
   @UseGuards(ApiAuthGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Get Stripe connect URL" })
+  @ApiOperation({ summary: "Get stripe connect URL" })
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   async redirect(
     @Req() req: Request,
@@ -79,7 +79,7 @@ export class StripeController {
   @Get("/save")
   @UseGuards()
   @Redirect(undefined, 301)
-  @ApiOperation({ summary: "Save Stripe credentials" })
+  @ApiOperation({ summary: "Save stripe credentials" })
   /**
    * Handles saving Stripe credentials.
    * If both orgId and teamId are present in the callback state, the request is proxied to the organization/team-level endpoint;
@@ -151,7 +151,7 @@ export class StripeController {
   @UseGuards(ApiAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
-  @ApiOperation({ summary: "Check Stripe connection" })
+  @ApiOperation({ summary: "Check stripe connection" })
   async check(@GetUser() user: UserWithProfile): Promise<StripCredentialsCheckOutputResponseDto> {
     return await this.stripeService.checkIfIndividualStripeAccountConnected(user.id);
   }

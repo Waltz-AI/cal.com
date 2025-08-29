@@ -15,7 +15,6 @@ import { ZAdminUpdate } from "./adminUpdate.schema";
 import { ZAdminVerifyInput } from "./adminVerify.schema";
 import { ZBulkUsersDelete } from "./bulkDeleteUsers.schema.";
 import { ZCreateInputSchema } from "./create.schema";
-import { ZCreateSelfHostedInputSchema } from "./createSelfHosted.schema";
 import { ZCreateTeamsSchema } from "./createTeams.schema";
 import { ZCreateWithPaymentIntentInputSchema } from "./createWithPaymentIntent.schema";
 import { ZDeleteTeamInputSchema } from "./deleteTeam.schema";
@@ -29,6 +28,10 @@ import { ZRemoveHostsFromEventTypes } from "./removeHostsFromEventTypes.schema";
 import { ZSetPasswordSchema } from "./setPassword.schema";
 import { ZUpdateInputSchema } from "./update.schema";
 import { ZUpdateUserInputSchema } from "./updateUser.schema";
+
+const NAMESPACE = "organizations";
+
+const namespaced = (s: string) => `${NAMESPACE}.${s}`;
 
 export const viewerOrganizationsRouter = router({
   getOrganizationOnboarding: authedProcedure.query(async (opts) => {
@@ -159,8 +162,8 @@ export const viewerOrganizationsRouter = router({
     const { default: handler } = await import("./createPhoneCall.handler");
     return handler(opts);
   }),
-  createSelfHosted: authedProcedure.input(ZCreateSelfHostedInputSchema).mutation(async (opts) => {
-    const { default: handler } = await import("./createSelfHosted.handler");
+  getFacetedValues: authedProcedure.query(async (opts) => {
+    const { default: handler } = await import("./getFacetedValues.handler");
     return handler(opts);
   }),
 });

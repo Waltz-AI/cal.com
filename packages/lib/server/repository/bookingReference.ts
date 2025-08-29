@@ -1,9 +1,9 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@calcom/prisma";
 import type { PartialReference } from "@calcom/types/EventManager";
 
-const bookingReferenceSelect = {
+const bookingReferenceSelect = Prisma.validator<Prisma.BookingReferenceSelect>()({
   id: true,
   type: true,
   uid: true,
@@ -12,7 +12,7 @@ const bookingReferenceSelect = {
   credentialId: true,
   deleted: true,
   bookingId: true,
-} satisfies Prisma.BookingReferenceSelect;
+});
 
 export class BookingReferenceRepository {
   static async findDailyVideoReferenceByRoomName({ roomName }: { roomName: string }) {

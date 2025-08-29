@@ -161,12 +161,10 @@ async function main() {
   // Get all members of the organization
   const orgMembers = organization.members;
 
-  let insightsTeam = await prisma.team.findUnique({
+  let insightsTeam = await prisma.team.findFirst({
     where: {
-      slug_parentId: {
-        slug: "insights-team",
-        parentId: organization.id, // Make sure team is under the organization
-      },
+      slug: "insights-team",
+      parentId: organization.id, // Make sure team is under the organization
     },
   });
 

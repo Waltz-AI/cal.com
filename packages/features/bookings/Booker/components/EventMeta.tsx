@@ -53,12 +53,10 @@ export const EventMeta = ({
   classNames,
   locale,
   timeZones,
-  children,
 }: {
   event?: Pick<
     BookerEvent,
     | "lockTimeZoneToggleOnBookingPage"
-    | "lockedTimeZone"
     | "schedule"
     | "seatsPerTimeSlot"
     | "subsetOfUsers"
@@ -85,11 +83,9 @@ export const EventMeta = ({
     eventMetaContainer?: string;
     eventMetaTitle?: string;
     eventMetaTimezoneSelect?: string;
-    eventMetaChildren?: string;
   };
   locale?: string | null;
   timeZones?: Timezone[];
-  children?: React.ReactNode;
 }) => {
   const { timeFormat, timezone } = useBookerTime();
   const [setTimezone] = useTimePreferences((state) => [state.setTimezone]);
@@ -113,12 +109,9 @@ export const EventMeta = ({
   );
 
   useEffect(() => {
-    //In case the event has lockTimeZone enabled ,set the timezone to event's locked timezone
-    if (event?.lockTimeZoneToggleOnBookingPage) {
-      const timezone = event.lockedTimeZone || event.schedule?.timeZone;
-      if (timezone) {
-        setTimezone(timezone);
-      }
+    //In case the event has lockTimeZone enabled ,set the timezone to event's attached availability timezone
+    if (event && event?.lockTimeZoneToggleOnBookingPage && event?.schedule?.timeZone) {
+      setTimezone(event.schedule?.timeZone);
     }
   }, [event, setTimezone]);
 
@@ -172,9 +165,7 @@ export const EventMeta = ({
             {translatedTitle ?? event?.title}
           </EventTitle>
           {(event.description || translatedDescription) && (
-            <EventMetaBlock
-              data-testid="event-meta-description"
-              contentClassName="mb-8 break-words max-w-full max-h-[180px] scroll-bar pr-4">
+            <EventMetaBlock contentClassName="mb-8 break-words max-w-full max-h-[180px] scroll-bar pr-4">
               <div
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{
@@ -221,8 +212,7 @@ export const EventMeta = ({
                 <span
                   className={`current-timezone before:bg-subtle min-w-32 -mt-[2px] flex h-6 max-w-full items-center justify-start before:absolute before:inset-0 before:bottom-[-3px] before:left-[-30px] before:top-[-3px] before:w-[calc(100%_+_35px)] before:rounded-md before:py-3 before:opacity-0 before:transition-opacity ${
                     event.lockTimeZoneToggleOnBookingPage ? "cursor-not-allowed" : ""
-                  }`}
-                  data-testid="event-meta-current-timezone">
+                  }`}>
                   <TimezoneSelect
                     timeZones={timeZones}
                     menuPosition="absolute"
@@ -235,11 +225,7 @@ export const EventMeta = ({
                       indicatorsContainer: () => "ml-auto",
                       container: () => "max-w-full",
                     }}
-                    value={
-                      event.lockTimeZoneToggleOnBookingPage
-                        ? event.lockedTimeZone || CURRENT_TIMEZONE
-                        : timezone
-                    }
+                    value={event.lockTimeZoneToggleOnBookingPage ? CURRENT_TIMEZONE : timezone}
                     onChange={({ value }) => {
                       setTimezone(value);
                       setBookerStoreTimezone(value);
@@ -264,7 +250,6 @@ export const EventMeta = ({
               </EventMetaBlock>
             ) : null}
           </div>
-          {children && <div className={classNames?.eventMetaChildren}>{children}</div>}
         </m.div>
       )}
     </div>

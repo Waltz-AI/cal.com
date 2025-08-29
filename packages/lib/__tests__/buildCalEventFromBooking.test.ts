@@ -52,8 +52,6 @@ const createBooking = (overrides = {}) => ({
   },
   destinationCalendar: null,
   user: null,
-  iCalSequence: 0,
-  iCalUID: "icaluid",
   ...overrides,
 });
 
@@ -123,10 +121,6 @@ describe("buildCalEventFromBooking", () => {
       destinationCalendar: [],
       seatsPerTimeSlot: booking.eventType?.seatsPerTimeSlot,
       seatsShowAttendees: true,
-      customReplyToEmail: undefined,
-      hideOrganizerEmail: undefined,
-      iCalSequence: 0,
-      iCalUID: booking.iCalUID,
     });
 
     expect(parseRecurringEvent).toHaveBeenCalledWith(booking.eventType?.recurringEvent);
@@ -141,8 +135,6 @@ describe("buildCalEventFromBooking", () => {
       userPrimaryEmail: null,
       attendees: [],
       eventType: null,
-      iCalUID: "icaluid",
-      iCalSequence: 0,
     });
 
     const organizer = createOrganizer({ name: null, locale: null });
@@ -178,10 +170,6 @@ describe("buildCalEventFromBooking", () => {
       destinationCalendar: [],
       seatsPerTimeSlot: undefined,
       seatsShowAttendees: undefined,
-      customReplyToEmail: undefined,
-      hideOrganizerEmail: undefined,
-      iCalSequence: 0,
-      iCalUID: "icaluid",
     });
 
     // @ts-expect-error - locale is set in mock
@@ -204,8 +192,6 @@ describe("buildCalEventFromBooking", () => {
           credentialId: 1,
         },
       },
-      iCalUID: "icaluid",
-      iCalSequence: 0,
     });
 
     const organizer = createOrganizer();

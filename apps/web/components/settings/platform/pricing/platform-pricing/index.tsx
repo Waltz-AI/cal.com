@@ -41,7 +41,7 @@ export const PlatformPricing = ({ teamId, teamPlan, heading }: PlatformPricingPr
 
   const handleStripeSubscription = async (plan: string) => {
     if (plan === "Enterprise") {
-      return router.push("https://go.cal.com/quote");
+      router.push("https://i.cal.com/sales/exploration");
     }
 
     if (currentPage === "platform") {
